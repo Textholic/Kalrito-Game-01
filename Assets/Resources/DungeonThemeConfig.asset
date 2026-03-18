@@ -1,0 +1,135 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd9de796421fdb2418c9dee4936f1308, type: 3}
+  m_Name: DungeonThemeConfig
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonThemeConfig
+  themes:
+  - themeName: "\uC11D\uC870 \uC9C0\uD558\uC2E4"
+    floorSprite: {fileID: 21300000, guid: 6b558f4b6b6cf9447a39de0812a0a3cf, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 50d72038d4682bd408a711176db21098, type: 3}
+    floorVisibleColor: {r: 0.78, g: 0.67, b: 0.5, a: 1}
+    wallVisibleColor: {r: 0.52, g: 0.42, b: 0.32, a: 1}
+    stairsColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+    floorDimColor: {r: 0.28, g: 0.23, b: 0.16, a: 1}
+    wallDimColor: {r: 0.16, g: 0.13, b: 0.09, a: 1}
+    bgTint: {r: 0.12, g: 0.1, b: 0.08, a: 1}
+    cameraBackground: {r: 0.05, g: 0.04, b: 0.03, a: 1}
+  - themeName: "\uC74C\uC0B0\uD55C \uC9C0\uD558\uBB18\uC9C0"
+    floorSprite: {fileID: 21300000, guid: 096668a9e1bbbcf42a6e5773a5b591bc, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 50d72038d4682bd408a711176db21098, type: 3}
+    floorVisibleColor: {r: 0.52, g: 0.57, b: 0.7, a: 1}
+    wallVisibleColor: {r: 0.3, g: 0.34, b: 0.44, a: 1}
+    stairsColor: {r: 0.55, g: 0.9, b: 1, a: 1}
+    floorDimColor: {r: 0.18, g: 0.2, b: 0.28, a: 1}
+    wallDimColor: {r: 0.1, g: 0.12, b: 0.18, a: 1}
+    bgTint: {r: 0.08, g: 0.09, b: 0.16, a: 1}
+    cameraBackground: {r: 0.03, g: 0.04, b: 0.08, a: 1}
+  - themeName: "\uB9C8\uBC95 \uBE44\uC804\uC2E4"
+    floorSprite: {fileID: 21300000, guid: 993403597eaec3c4683fc27cd1dafeb5, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 10ebe7a8e14363545946d5a92ac0bcb0, type: 3}
+    floorVisibleColor: {r: 0.64, g: 0.52, b: 0.88, a: 1}
+    wallVisibleColor: {r: 0.38, g: 0.28, b: 0.58, a: 1}
+    stairsColor: {r: 0.9, g: 0.38, b: 1, a: 1}
+    floorDimColor: {r: 0.22, g: 0.16, b: 0.36, a: 1}
+    wallDimColor: {r: 0.12, g: 0.08, b: 0.22, a: 1}
+    bgTint: {r: 0.08, g: 0.04, b: 0.18, a: 1}
+    cameraBackground: {r: 0.04, g: 0.02, b: 0.1, a: 1}
+  - themeName: "\uC6A9\uC554 \uC9C0\uB300"
+    floorSprite: {fileID: 21300000, guid: 6b558f4b6b6cf9447a39de0812a0a3cf, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 50d72038d4682bd408a711176db21098, type: 3}
+    floorVisibleColor: {r: 0.88, g: 0.46, b: 0.16, a: 1}
+    wallVisibleColor: {r: 0.58, g: 0.18, b: 0.06, a: 1}
+    stairsColor: {r: 1, g: 0.35, b: 0.05, a: 1}
+    floorDimColor: {r: 0.36, g: 0.16, b: 0.05, a: 1}
+    wallDimColor: {r: 0.2, g: 0.07, b: 0.02, a: 1}
+    bgTint: {r: 0.2, g: 0.05, b: 0.02, a: 1}
+    cameraBackground: {r: 0.1, g: 0.02, b: 0.01, a: 1}
+  - themeName: "\uC218\uBAB0 \uB3D9\uAD74"
+    floorSprite: {fileID: 21300000, guid: 096668a9e1bbbcf42a6e5773a5b591bc, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 10ebe7a8e14363545946d5a92ac0bcb0, type: 3}
+    floorVisibleColor: {r: 0.36, g: 0.78, b: 0.88, a: 1}
+    wallVisibleColor: {r: 0.16, g: 0.44, b: 0.62, a: 1}
+    stairsColor: {r: 0.38, g: 1, b: 0.9, a: 1}
+    floorDimColor: {r: 0.12, g: 0.28, b: 0.4, a: 1}
+    wallDimColor: {r: 0.06, g: 0.14, b: 0.24, a: 1}
+    bgTint: {r: 0.04, g: 0.11, b: 0.22, a: 1}
+    cameraBackground: {r: 0.02, g: 0.05, b: 0.12, a: 1}
+  - themeName: "\uACE0\uB300 \uC720\uC801"
+    floorSprite: {fileID: 21300000, guid: 993403597eaec3c4683fc27cd1dafeb5, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 921dcff1d0da9eb409b4b461084190e2, type: 3}
+    floorVisibleColor: {r: 0.9, g: 0.78, b: 0.5, a: 1}
+    wallVisibleColor: {r: 0.62, g: 0.52, b: 0.3, a: 1}
+    stairsColor: {r: 1, g: 0.88, b: 0.24, a: 1}
+    floorDimColor: {r: 0.34, g: 0.28, b: 0.16, a: 1}
+    wallDimColor: {r: 0.2, g: 0.17, b: 0.1, a: 1}
+    bgTint: {r: 0.18, g: 0.15, b: 0.06, a: 1}
+    cameraBackground: {r: 0.07, g: 0.06, b: 0.02, a: 1}
+  - themeName: "\uC218\uC815 \uB3D9\uAD74"
+    floorSprite: {fileID: 21300000, guid: 6b558f4b6b6cf9447a39de0812a0a3cf, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: fdfb3796a96b09f45b7ed20555d95926, type: 3}
+    floorVisibleColor: {r: 0.7, g: 0.96, b: 1, a: 1}
+    wallVisibleColor: {r: 0.26, g: 0.64, b: 0.84, a: 1}
+    stairsColor: {r: 0.4, g: 1, b: 0.85, a: 1}
+    floorDimColor: {r: 0.22, g: 0.36, b: 0.46, a: 1}
+    wallDimColor: {r: 0.1, g: 0.22, b: 0.32, a: 1}
+    bgTint: {r: 0.04, g: 0.12, b: 0.2, a: 1}
+    cameraBackground: {r: 0.02, g: 0.05, b: 0.1, a: 1}
+  - themeName: "\uD654\uC0B0 \uC9C0\uD558"
+    floorSprite: {fileID: 21300000, guid: 096668a9e1bbbcf42a6e5773a5b591bc, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 50d72038d4682bd408a711176db21098, type: 3}
+    floorVisibleColor: {r: 0.84, g: 0.33, b: 0.08, a: 1}
+    wallVisibleColor: {r: 0.32, g: 0.1, b: 0.03, a: 1}
+    stairsColor: {r: 1, g: 0.55, b: 0.08, a: 1}
+    floorDimColor: {r: 0.3, g: 0.11, b: 0.03, a: 1}
+    wallDimColor: {r: 0.16, g: 0.05, b: 0.01, a: 1}
+    bgTint: {r: 0.15, g: 0.03, b: 0.01, a: 1}
+    cameraBackground: {r: 0.06, g: 0.01, b: 0.01, a: 1}
+  - themeName: "\uC2EC\uC5F0\uC758 \uADF8\uB9BC\uC790"
+    floorSprite: {fileID: 21300000, guid: 993403597eaec3c4683fc27cd1dafeb5, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 730c911464148054487bb3efd7ef0d07, type: 3}
+    floorVisibleColor: {r: 0.5, g: 0.36, b: 0.72, a: 1}
+    wallVisibleColor: {r: 0.2, g: 0.14, b: 0.34, a: 1}
+    stairsColor: {r: 0.85, g: 0.34, b: 1, a: 1}
+    floorDimColor: {r: 0.18, g: 0.12, b: 0.26, a: 1}
+    wallDimColor: {r: 0.08, g: 0.05, b: 0.14, a: 1}
+    bgTint: {r: 0.06, g: 0.03, b: 0.12, a: 1}
+    cameraBackground: {r: 0.03, g: 0.01, b: 0.06, a: 1}
+  - themeName: "\uCD5C\uC885 \uC2EC\uC5F0"
+    floorSprite: {fileID: 21300000, guid: 6b558f4b6b6cf9447a39de0812a0a3cf, type: 3}
+    wallSprite: {fileID: 21300000, guid: 9e5e200069c8ec14b857e10db776c146, type: 3}
+    stairsSprite: {fileID: 21300000, guid: 45b96aab96433304a8dd459f35996197, type: 3}
+    bgSprite: {fileID: 21300000, guid: 50d72038d4682bd408a711176db21098, type: 3}
+    floorVisibleColor: {r: 0.9, g: 0.78, b: 0.26, a: 1}
+    wallVisibleColor: {r: 0.12, g: 0.08, b: 0.16, a: 1}
+    stairsColor: {r: 1, g: 0.92, b: 0.18, a: 1}
+    floorDimColor: {r: 0.28, g: 0.23, b: 0.08, a: 1}
+    wallDimColor: {r: 0.06, g: 0.04, b: 0.08, a: 1}
+    bgTint: {r: 0.03, g: 0.02, b: 0.05, a: 1}
+    cameraBackground: {r: 0.01, g: 0.01, b: 0.02, a: 1}

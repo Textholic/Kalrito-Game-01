@@ -1,32 +1,95 @@
-# Prerequisites
-*.d
+# ======================
+# Unity 자동 생성 폴더
+# ======================
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# Unity 로컬 캐시 (빌드 시 자동 재생성)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+[Bb]uild/
+[Bb]uilds/
+[Uu]ser[Ss]ettings/
 
-# Precompiled Headers
-*.gch
-*.pch
+# 메모리 캡처
+MemoryCaptures/
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+# Unity 자동 생성 에셋
+GeneratedAssets/
 
-# Fortran module files
-*.mod
-*.smod
+# ======================
+# IDE / Editor 파일
+# ======================
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+# Visual Studio
+.vs/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
 
-# Executables
-*.exe
-*.out
+# Rider
+.idea/
+*.sln.iml
+
+# ======================
+# OS 생성 파일
+# ======================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ======================
+# 빌드 결과물
+# ======================
+*.apk
+*.aab
+*.unitypackage
 *.app
+ExportedObj/
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+!/[Aa]ssets/[Ss]treamingAssets/aa/Android
+
+# ======================
+# Unity Addressables 캐시
+# ======================
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/**/[Bb]uildArtifacts/
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/[Ss]ettings/*
+
+# ======================
+# Unity Crash 리포트
+# ======================
+crashlytics-build.properties
+
+# ======================
+# 서드파티 / 유료 에셋 (저작권 보호 - Git 업로드 금지)
+# ======================
+[Aa]ssets/UI Kit Pro - Big Bundle/
+[Aa]ssets/UI Kit Pro - Big Bundle.meta
+[Aa]ssets/Brackeys/
+[Aa]ssets/Brackeys.meta
+[Aa]ssets/TextMesh Pro/
+[Aa]ssets/TextMesh Pro.meta

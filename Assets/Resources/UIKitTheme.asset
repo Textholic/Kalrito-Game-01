@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7b00d099468a7c44a5ad09eca2e7e6f, type: 3}
+  m_Name: UIKitTheme
+  m_EditorClassIdentifier: Assembly-CSharp::UIKitTheme
+  titleFont: {fileID: 12800000, guid: de226d092f5454b89a00101a91a75541, type: 3}
+  bodyFont: {fileID: 12800000, guid: b60bf39bbdda248769c28b3e4f9fe9c4, type: 3}
+  btnPrimary: {fileID: 21300000, guid: 00d4e37ab60a94f75ab1097836d093db, type: 3}
+  btnSecondary: {fileID: 21300000, guid: 0144819ab0ce84c188f2490f825467a7, type: 3}
+  btnDanger: {fileID: 21300000, guid: bd758388445eb4eaa948285ab32640bf, type: 3}
+  btnBack: {fileID: 21300000, guid: 9df3dae6a0fa947aa83d87a44fbd5138, type: 3}
+  btnDisabled: {fileID: 21300000, guid: 652499dfbb18e43cb90e7e6dd68bd350, type: 3}
+  panelMain: {fileID: 21300000, guid: b3458363a12be459cba3ca22532b8024, type: 3}
+  panelScroll: {fileID: 21300000, guid: 3c8bc2a0a685a4529981b592d77904cf, type: 3}
+  panelSlot: {fileID: 21300000, guid: 57f53873bc90c486782712078d10c431, type: 3}
+  panelDark: {fileID: 21300000, guid: 4a28d1cfe0a2f4653b9075066e01fb8f, type: 3}
+  panelTransparent: {fileID: 21300000, guid: 66315615c27ea43989dc14093729325d, type: 3}
+  headerRibbon: {fileID: 21300000, guid: 5fc077a6130b443948f0319c022ca553, type: 3}
+  headerRibbonOutline: {fileID: 21300000, guid: 46abe3f9307d9408db0eeff9372d3964,
+    type: 3}
+  iconSword: {fileID: 21300000, guid: f08ed4296611449299a1d600404c1cef, type: 3}
+  iconShield: {fileID: 21300000, guid: e20ec03d3a56a4a75903665e2fcb7546, type: 3}
+  iconSkull: {fileID: 21300000, guid: f74aece82ce8e45a696fda89db79936b, type: 3}
+  iconChest: {fileID: 21300000, guid: 0f6e605fc957b4a19b190f0d72cddbbb, type: 3}
+  iconSettings: {fileID: 21300000, guid: 2c69a72784fa2461cb6ad4863a8d216c, type: 3}
+  iconStar: {fileID: 21300000, guid: 6bf8e7f6c528e4bed8f01d4a99ec983e, type: 3}
+  iconCoin: {fileID: 21300000, guid: 54de31ef85a7d4eae802a5fe3e6b4784, type: 3}
+  iconMusicOn: {fileID: 21300000, guid: 6aae52b16a381459fbe52ec6957b3e5e, type: 3}
+  iconMusicOff: {fileID: 21300000, guid: a80d27b0edc5d4c9084f3ebfd348583f, type: 3}
+  iconSfxOn: {fileID: 21300000, guid: 6201d7451532f4d9eb70d32c31449705, type: 3}
+  iconSfxOff: {fileID: 21300000, guid: 1cd96eff3a6bf418586c419110cfb7b7, type: 3}
+  iconBack: {fileID: 21300000, guid: 598e51b9ce1284d80b7e2e35b28e7214, type: 3}
+  iconCastle: {fileID: 21300000, guid: 2977a922ff3004beeaf6fcfd91e80d75, type: 3}
+  iconPotion: {fileID: 21300000, guid: aae0b42d1ea5f43bc8de2b6d9b011d95, type: 3}
+  iconList: {fileID: 21300000, guid: fec117a84b1e640d98874899166e58e6, type: 3}
+  iconCheckmark: {fileID: 21300000, guid: 2445dd60f396046c9a393c01ad3f7c9d, type: 3}
+  iconCross: {fileID: 21300000, guid: 35d125f4151f848b782e714eb9442a83, type: 3}
+  iconArmor: {fileID: 21300000, guid: a44e4d795fbc84348a9a41f1adf1f474, type: 3}
+  iconBone: {fileID: 21300000, guid: 2e29becc35547479486086add9ae0935, type: 3}
