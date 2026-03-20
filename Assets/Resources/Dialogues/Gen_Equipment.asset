@@ -1,4 +1,4 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -15,15 +15,13 @@ MonoBehaviour:
   condition: 0
   lines:
   - character: 0
-    faceSpriteName: 
-    text: "\uC7A0\uAE50\uB9CC\uC694, \uBC29\uD328\uC5D0 \uAE08\uC774 \uAC04 \uAC70
-      \uBCF4\uC774\uC2DC\uB098\uC694? \uB358\uC804 \uB4E4\uC5B4\uAC00\uAE30 \uC804\uC5D0
-      \uC7A5\uBE44 \uC0C1\uD0DC\uB97C \uD55C\uBC88 \uB354 \uD655\uC778\uD558\uC138\uC694."
+    faceSprite: {fileID: -2052651245, guid: 5e330bee152712b498017866e060d88d, type: 3}
+    text: "\uADF8\uC800\uAED8\uB294 \uD1A0\uB07C\uB97C \uBD24\uC5B4. \uC5B4\uC81C\uB294
+      \uC0AC\uC2B4, \uC624\uB298\uC740 \uB2F9\uC2E0."
   - character: 1
-    faceSpriteName: 
-    text: "\uC557, \uC815\uB9D0\uC774\uB124\uC694. \uC5B4\uC81C \uACE8\uB818\uD55C\uD14C
-      \uC880 \uC138\uAC8C \uB9DE\uC558\uAC70\uB4E0\uC694. \uC218\uB9AC\uD574\uC57C\uACA0\uAD70\uC694."
+    faceSprite: {fileID: 0}
+    text: "...\uB23C?"
   - character: 0
-    faceSpriteName: 
-    text: "\uB9C8\uC744\uC5D0 \uB300\uC7A5\uC7A5\uC774 \uD5E8\uB9AC\uC528\uD55C\uD14C
-      \uAC00\uBCF4\uC138\uC694. \uC19C\uC528\uAC00 \uAF64 \uC88B\uC740 \uBD84\uC774\uC5D0\uC694."
+    faceSprite: {fileID: 826436998, guid: 5e330bee152712b498017866e060d88d, type: 3}
+    text: "\uB18D\uB2F4\uC774\uB780 \uAC78 \uBAA8\uB974\uB294 \uC0AC\uB78C\uC774\uAD70
+      \uB358\uC804\uC774\uB098 \uB4E4\uC5B4\uAC00."

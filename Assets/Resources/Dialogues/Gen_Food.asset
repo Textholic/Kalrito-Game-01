@@ -15,7 +15,7 @@ MonoBehaviour:
   condition: 0
   lines:
   - character: 0
-    faceSprite: {fileID: 0}
+    faceSprite: {fileID: -811975928, guid: 5e330bee152712b498017866e060d88d, type: 3}
     text: "\uC624\uB298 \uD2B9\uC81C \uB358\uC804 \uCE74\uB808\uB97C \uB9CC\uB4E4\uC5C8\uC5B4\uC694!
       \uC7AC\uB8CC\uB294 \uBB3B\uC9C0 \uB9C8\uC138\uC694... \uBE44\uBC00 \uB808\uC2DC\uD53C\uAC70\uB4E0\uC694.
       \uD558\uC9C0\uB9CC \uBA39\uC73C\uBA74 \uD798\uC774 \uB098\uC694!"
@@ -24,7 +24,7 @@ MonoBehaviour:
     text: "\uC7AC\uB8CC\uAC00 \uC880 \uC218\uC0C1\uD558\uC9C0\uB9CC, \uB9DB\uC788\uC5B4
       \uBCF4\uC774\uB294 \uB0C4\uC0C8\uAC00 \uB098\uB294\uAD70..."
   - character: 0
-    faceSprite: {fileID: 0}
+    faceSprite: {fileID: -811975928, guid: 5e330bee152712b498017866e060d88d, type: 3}
     text: "\uBBFF\uC5B4\uBCF4\uC138\uC694. \uC81C\uAC00 20\uB144\uC9F8 \uC774 \uC5EC\uAD00\uC744
       \uC6B4\uC601\uD55C \uC0AC\uB78C\uC774\uC5D0\uC694!"
   - character: 1

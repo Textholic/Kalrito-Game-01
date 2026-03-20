@@ -1,4 +1,4 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -15,15 +15,21 @@ MonoBehaviour:
   condition: 0
   lines:
   - character: 0
-    faceSpriteName: 
-    text: "\uC694\uC998 \uC0C1\uC778\uB4E4 \uC0AC\uC774\uC5D0 \uC18C\uBB38\uC774
-      \uB3CC\uB354\uAD70\uC694. \uB358\uC804 \uAE4A\uC219\uD55C \uACF3\uC5D0 \uC7A0\uB4E0
-      \uC6A9\uC774 \uC788\uB2E4\uB294 \uAC70\uC608\uC694. \uBB50, \uC18C\uBB38\uC774\uACA0\uC9C0\uB9CC..."
+    faceSprite: {fileID: 1417953375, guid: 5e330bee152712b498017866e060d88d, type: 3}
+    text: "\uC0AC\uB78C\uC774 \uC5B8\uC81C \uC8FD\uB294\uB2E4\uACE0 \uC0DD\uAC01\uD558\uB2C8?
+      \uC2EC\uC7A5\uC774 \uCD1D\uC54C\uC5D0 \uB6AB\uB838\uC744\uB54C? \uC544\uB2C8!
+      \uBD88\uCE58\uC758 \uBCD1\uC5D0 \uAC78\uB838\uC744\uB54C? \uC544\uB2C8! \uB9F9\uB3C5\uBC84\uC12F\uC2A4\uD504\uB97C
+      \uB9C8\uC168\uC744\uB54C? \uC544\uB2C8\uC57C! \uC0AC\uB78C\uB4E4\uC5D0\uAC8C\uC11C..
+      \uC78A\uD600\uC84C\uC744\uB54C\uB2E4!!!"
   - character: 1
-    faceSpriteName: 
-    text: "\uC6A9\uC774\uC694? \uC544\uC9C1 \uADF8\uB7F0 \uAC74 \uBABB \uBD24\uB294\uB370,
-      \uB354 \uAE4A\uC774 \uB0B4\uB824\uAC00\uBA74 \uC54C\uAC8C \uB420 \uAC83 \uAC19\uC740\uB370\uC694."
+    faceSprite: {fileID: 187469678, guid: e1c66b28b770a654c8870a1b94089aa1, type: 3}
+    text: "\uADF8\uB7EC\uB2C8\uAE4C \uC624\uB298\uC758 \uCE74\uB808\uC5D0 \uB9F9\uB3C5
+      \uBC84\uC12F\uC774 \uB4E4\uC5B4\uAC14\uC5C8\uB2E4\uB294 \uAC70\uC9C0?"
   - character: 0
-    faceSpriteName: 
-    text: "\uC81C\uBC1C \uB9CC\uB098\uC9C0 \uC54A\uB294 \uAC8C \uCD5C\uC120\uC785\uB2C8\uB2E4.
-      \uBAA8\uD5D8\uAC00 \uC591\uBC18."
+    faceSprite: {fileID: -177553345, guid: 5e330bee152712b498017866e060d88d, type: 3}
+    text: "...\uADF8 \uC0AC\uB78C \uACB0\uAD6D \uC548\uC8FD\uC5C8\uC796\uC544. \uD55C\uC794
+      \uD574."
+  - character: 0
+    faceSprite: {fileID: -223948101, guid: e1c66b28b770a654c8870a1b94089aa1, type: 3}
+    text: "\uC544\uB2C8 !\uC774 \uCE74\uB808\uC5D0\uB3C4 \uADF8\uAC70 \uB4E4\uC5B4\uC788\uB0D0\uACE0!
+      \uC57C! \uB0B4 \uB208 \uBD10! \uC57C!"
