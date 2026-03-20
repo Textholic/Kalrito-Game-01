@@ -4,6 +4,7 @@
 // Unity 에디터: Assets > Create > DungeonGame > Enemy Data
 // ============================================================
 using UnityEngine;
+using UnityEngine.Serialization;
 
 // ── 몬스터 등급 ───────────────────────────────────────────────────────────────
 public enum EnemyRank
@@ -44,11 +45,20 @@ public class EnemyData : ScriptableObject
     [Tooltip("몬스터 설명")]
     public string    description = "";
 
-    [Tooltip("스프라이트")]
-    public Sprite    sprite;
+    [Header("스프라이트 (2장)")]
+    [Tooltip("오른쪽을 바라보는 스프라이트")]
+    [FormerlySerializedAs("sprite")]
+    public Sprite    spriteRight;
 
-    [Tooltip("몬스터 등급")]
+    [Tooltip("왼쪽을 바라보는 스프라이트")]
+    public Sprite    spriteLeft;
+
+    [Header("등급")]
+    [Tooltip("보스: 스탯 고정 / 일반·정예: 층수 레벨에 따라 스케일")]
     public EnemyRank rank        = EnemyRank.Normal;
+
+    /// <summary>보스 여부 (스탯이 고정값으로 사용됩니다).</summary>
+    public bool IsBoss => rank == EnemyRank.Boss;
 
     // ── 기본 스탯 (층수 배율 적용 전) ────────────────────────────────────────
     [Header("기본 스탯 (층수 배율 적용 전 수치)")]
@@ -87,6 +97,11 @@ public class EnemyData : ScriptableObject
     [Tooltip("어그로 감지 범위 (타일 수, 매료 시 2배 적용됨)")]
     public int   aggroRange     = 3;
 
+    // ── 보스 전용 설정 ───────────────────────────────────────────────────────
+    [Header("보스 전용 설정 (Boss 등급에서만 사용)")]
+    [Tooltip("보스 전투 진입 시 재생할 전용 BGM (null이면 기본 던전 BGM 사용)")]
+    public AudioClip bossBattleBgm;
+
     // ── 등장 층수 ─────────────────────────────────────────────────────────────
     [Header("등장 층수 범위")]
     [Tooltip("등장 최소 층수")]
@@ -109,17 +124,35 @@ public class EnemyData : ScriptableObject
     public StatusEffectType onHitStatusEffect = StatusEffectType.None;
 
     // ── 편의 메서드 ───────────────────────────────────────────────────────────
-    /// <summary>지정 레벨의 체력을 계산.</summary>
+    /// <summary>
+    /// 지정 레벨의 체력을 계산.
+    /// 보스는 레벨과 무관하게 baseHp 고정.
+    /// </summary>
     public int GetHpAtLevel(int level)
-        => Mathf.RoundToInt(baseHp + hpPerLevel * (level - 1));
+    {
+        if (IsBoss) return baseHp;
+        return Mathf.RoundToInt(baseHp + hpPerLevel * (level - 1));
+    }
 
-    /// <summary>지정 레벨의 공격력을 계산.</summary>
+    /// <summary>
+    /// 지정 레벨의 공격력을 계산.
+    /// 보스는 레벨과 무관하게 baseAttack 고정.
+    /// </summary>
     public int GetAttackAtLevel(int level)
-        => Mathf.RoundToInt(baseAttack + attackPerLevel * (level - 1));
+    {
+        if (IsBoss) return baseAttack;
+        return Mathf.RoundToInt(baseAttack + attackPerLevel * (level - 1));
+    }
 
-    /// <summary>지정 레벨의 경험치를 계산.</summary>
+    /// <summary>
+    /// 지정 레벨의 경험치를 계산.
+    /// 보스는 레벨과 무관하게 baseExp 고정.
+    /// </summary>
     public int GetExpAtLevel(int level)
-        => Mathf.RoundToInt(baseExp + expPerLevel * (level - 1));
+    {
+        if (IsBoss) return baseExp;
+        return Mathf.RoundToInt(baseExp + expPerLevel * (level - 1));
+    }
 
     /// <summary>골드 드롭 랜덤 계산.</summary>
     public int RollGoldDrop()

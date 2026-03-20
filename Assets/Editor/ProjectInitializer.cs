@@ -9,32 +9,34 @@ public class ProjectInitializer
 {
     // ── 스프라이트 경로 ────────────────────────────────────────────────────
     private const string BASE    = "Assets/Brackeys/2D Mega Pack/";
-    private const string FloorP  = BASE+"Environment/Tiles/GroundTile.png";
+    private const string FloorP  = "Assets/Resources/tile.png";
     private const string WallP   = BASE+"Environment/Gothic/Stone.png";
     private const string StairsP = BASE+"Environment/Gothic/Pentagram_Activated.png"; // 계단 변경
     private const string PlayerP      = BASE+"Characters/Fantasy/LightWizard.png";
     private const string PlayerSheetP = "Assets/Characters/PlayerSheet.png";  // 플레이어 스프라이트 시트
-    // IDLE 0-3, WalkUp 4-7, WalkLeft 8-11, WalkRight 12-15, Downed 16-19
-    private static readonly (string field, int from, int count)[] PlayerAnimFields =
+    // Down=0, Up=4, Left=8, Right=12, Downed=16 (시트 인덱스)
+    private static readonly (string field, int index)[] PlayerSingleSpriteFields =
     {
-        ("playerIdleSprites",       0,  4),
-        ("playerWalkUpSprites",     4,  4),
-        ("playerWalkLeftSprites",   8,  4),
-        ("playerWalkRightSprites", 12,  4),
-        ("playerDownedSprites",    16,  4),
+        ("playerSpriteDown",    0),
+        ("playerSpriteUp",      4),
+        ("playerSpriteLeft",    8),
+        ("playerSpriteRight",  12),
+        ("playerSpriteDowned", 16),
     };
-    private const string Enemy1P      = BASE+"Enemies/Gothic/GothicEnemy01.png";   // 고블린
-    private const string Enemy2P = BASE+"Enemies/Gothic/GothicEnemy02.png";   // 오크
-    private const string Enemy3P = BASE+"Enemies/Gothic/FireheadEnemy.png";   // 화염마
+    // 에너미 슬롯은 Inspector에서 수동등록
     private const string PotionP = BASE+"Items & Icons/Pixel Art/Potion.png";
     private const string GoldSmP = BASE+"Items & Icons/Pixel Art/Coin.png";
     private const string GoldLgP   = BASE+"Items & Icons/Pixel Art/Diamond.png";
     private const string InvenIconP = BASE+"Items & Icons/Pixel Art/Scroll.png";
     private const string EquipIconP = BASE+"Items & Icons/Pixel Art/Iron.png";
     private const string BgP        = BASE+"Backgrounds/DarkBackground.png";
-    // 아이템 상자 스프라이트
-    private const string ChestClosedP = BASE+"Items & Icons/Pixel Art/Castle.png";
-    private const string ChestOpenedP = BASE+"Items & Icons/Pixel Art/Wood.png";
+    // 보스 복도 스프라이트
+    private const string DoorP      = BASE+"Environment/Gothic/Door.png";
+    private const string ShopNpcP   = "Assets/Resources/shop.png";
+    // 아이템 상자 스프라이트 — lootbox 파일명 기준 (스프라이트 임포트 후 자동 할당됨)
+    private const string ChestBottomP   = BASE+"Items & Icons/Lootbox/lootbox_bronze_bottom.png";
+    private const string ChestTopCloseP = BASE+"Items & Icons/Lootbox/lootbox_bronze_topclose.png";
+    private const string ChestTopOpenP  = BASE+"Items & Icons/Lootbox/lootbox_bronze_topopen.png";
 
     // ── 사운드 경로 ───────────────────────────────────────────────────────
     private const string SND = BASE+"Sounds/";
@@ -42,13 +44,23 @@ public class ProjectInitializer
     private const string SfxBonusP    = SND+"Bonus.wav";
     private const string SfxGameOverP = SND+"GameOver.wav";
     private const string SfxStairsP   = SND+"Spawn.wav";
-    private const string SfxEnemyHitP = SND+"GruntVoice01.wav";
+    private const string SfxEnemyHitP    = SND+"GruntVoice01.wav";
+    private const string SfxLootboxOpenP = "Assets/Sounds/lootbox_open.ogg";
+    private const string SfxDeath01P     = "Assets/Sounds/death_sound01.ogg";
+    private const string SfxDeath02P     = "Assets/Sounds/death_sound02.ogg";
+    private const string SfxDeath03P     = "Assets/Sounds/death_sound03.ogg";
     private const string BgmP         = "Assets/Sounds/Theme/main_01.ogg"; // 배경음
 
     // ====================================================================
     [MenuItem("Tools/1. Initialize Project (Force Create)")]
     public static void Initialize()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            EditorUtility.DisplayDialog("오류", "플레이 모드에서는 실행할 수 없습니다.\n플레이를 중지한 후 다시 시도하세요.", "확인");
+            return;
+        }
+
         if (!Directory.Exists(Application.dataPath+"/Scenes"))
         {
             Directory.CreateDirectory(Application.dataPath+"/Scenes");
@@ -72,6 +84,7 @@ public class ProjectInitializer
     [MenuItem("Tools/2. Open Title Scene")]
     public static void OpenTitleScene()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode) return;
         if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             EditorSceneManager.OpenScene("Assets/Scenes/TitleScene.unity");
     }
@@ -79,6 +92,7 @@ public class ProjectInitializer
     [MenuItem("Tools/3. Setup Game Scene Sprites")]
     public static void SetupGameSceneSprites()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode) return;
         if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             EditorSceneManager.OpenScene("Assets/Scenes/GameScene.unity", OpenSceneMode.Single);
 
@@ -99,6 +113,11 @@ public class ProjectInitializer
     // ====================================================================
     private static void CreateScene(string name, System.Type type, bool assign)
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            Debug.LogError("[ProjectInitializer] 플레이 모드에서는 씬을 생성할 수 없습니다.");
+            return;
+        }
         string path = $"Assets/Scenes/{name}.unity";
         var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
         var obj   = new GameObject(name+"Manager");
@@ -112,25 +131,24 @@ public class ProjectInitializer
         var so = new SerializedObject(gsm);
 
         // 타일
-        Set(so, "floorSprite",  Spr(FloorP));
+        Set(so, "floorSprite",  SubSprIdx(FloorP, 0));
         Set(so, "wallSprite",   Spr(WallP));
         Set(so, "stairsSprite", Spr(StairsP));
 
         // 엔티티
         Set(so, "playerSprite", Spr(PlayerP));
-        SetPlayerAnimArrays(so, PlayerSheetP);
-        Set(so, "enemy1Sprite", SubSpr(Enemy1P, "GothicEnemy01_0"));
-        Set(so, "enemy2Sprite", SubSpr(Enemy2P, "GothicEnemy02_0"));
-        Set(so, "enemy3Sprite", SubSpr(Enemy3P, "FireheadEnemy_0"));
+        SetPlayerSingleSprites(so, PlayerSheetP);
+        // 에너미 슬롯은 Inspector에서 수동 등록 (GameSceneManager > Enemy Slots)
 
         // 아이템
         Set(so, "potionSprite", Spr(PotionP));
         Set(so, "goldSmSprite", Spr(GoldSmP));
         Set(so, "goldLgSprite", Spr(GoldLgP));
 
-        // 아이템 상자
-        Set(so, "chestClosedSprite", Spr(ChestClosedP));
-        Set(so, "chestOpenedSprite", Spr(ChestOpenedP));
+        // 아이템 상자 스프라이트 (Assets/Resources/lootbox.png 의 [0]=닫힘, [1]=열림)
+        // EnsureSprites() 에서 자동 로드되므로 Inspector 값이 없어도 동작함
+        // Set(so, "chestClosedSprite", ...);
+        // Set(so, "chestOpenedSprite", ...);
 
         // HUD 아이콘
         Set(so, "inventoryIconSprite", Spr(InvenIconP));
@@ -139,13 +157,22 @@ public class ProjectInitializer
         // 배경
         Set(so, "bgSprite", Spr(BgP));
 
+        // 보스 복도 스프라이트
+        Set(so, "doorSprite", Spr(DoorP));
+        SetSpriteArray(so, "shopNpcSprites", ShopNpcP);
+
         // 사운드
         SetClip(so, "sfxHit",      Clip(SfxHitP));
         SetClip(so, "sfxBonus",    Clip(SfxBonusP));
         SetClip(so, "sfxGameOver", Clip(SfxGameOverP));
         SetClip(so, "sfxStairs",   Clip(SfxStairsP));
-        SetClip(so, "sfxEnemyHit", Clip(SfxEnemyHitP));
-        SetClip(so, "bgmCombat",   Clip(BgmP));
+        SetClip(so, "sfxEnemyHit",    Clip(SfxEnemyHitP));
+        SetClip(so, "sfxLootboxOpen", Clip(SfxLootboxOpenP));
+        SetClipArray(so, "sfxDeathPool", new[]{ SfxDeath01P, SfxDeath02P, SfxDeath03P });
+        SetClip(so, "bgmCombat",      Clip(BgmP));
+
+        // 보스 BGM 배열 (Assets/Sounds/Character/boss_01~10.ogg)
+        SetClipArray(so, "bgmBossPool", BossBgmPaths());
 
         so.ApplyModifiedProperties();
         Debug.Log("[Setup] All assets assigned to GameSceneManager.");
@@ -160,6 +187,23 @@ public class ProjectInitializer
         p.objectReferenceValue=spr;
     }
 
+    // 슬라이스된 PNG의 모든 서브 스프라이트를 배열 필드에 할당
+    private static void SetSpriteArray(SerializedObject so, string field, string path)
+    {
+        var p = so.FindProperty(field);
+        if (p == null) { Debug.LogWarning($"[Setup] 필드 없음: {field}"); return; }
+        var all = AssetDatabase.LoadAllAssetsAtPath(path);
+        var sprites = new System.Collections.Generic.List<Sprite>();
+        foreach (var o in all)
+            if (o is Sprite s) sprites.Add(s);
+        if (sprites.Count == 0) { Debug.LogWarning($"[Setup] 스프라이트 없음: {path}"); return; }
+        p.ClearArray();
+        p.arraySize = sprites.Count;
+        for (int i = 0; i < sprites.Count; i++)
+            p.GetArrayElementAtIndex(i).objectReferenceValue = sprites[i];
+        Debug.Log($"[Setup] {field}: {sprites.Count}개 슬라이스 등록");
+    }
+
     private static void SetClip(SerializedObject so,string field,AudioClip clip)
     {
         if (clip==null){Debug.LogWarning($"[Setup] 클립 없음: {field}");return;}
@@ -168,7 +212,34 @@ public class ProjectInitializer
         p.objectReferenceValue=clip;
     }
 
-    private static void SetPlayerAnimArrays(SerializedObject so, string path)
+    private static void SetClipArray(SerializedObject so, string field, string[] paths)
+    {
+        var p = so.FindProperty(field);
+        if (p == null) { Debug.LogWarning($"[Setup] 필드 없음: {field}"); return; }
+        var clips = new List<AudioClip>();
+        foreach (var path in paths)
+        {
+            var c = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+            if (c != null) clips.Add(c);
+            else Debug.LogWarning($"[Setup] 클립 없음: {path}");
+        }
+        p.ClearArray();
+        p.arraySize = clips.Count;
+        for (int i = 0; i < clips.Count; i++)
+            p.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
+        Debug.Log($"[Setup] {field}: {clips.Count}개 등록");
+    }
+
+    private static string[] BossBgmPaths()
+    {
+        const string BASE_DIR = "Assets/Sounds/Character/";
+        var paths = new List<string>();
+        for (int i = 1; i <= 10; i++)
+            paths.Add($"{BASE_DIR}boss_{i:D2}.ogg");
+        return paths.ToArray();
+    }
+
+    private static void SetPlayerSingleSprites(SerializedObject so, string path)
     {
         var all = AssetDatabase.LoadAllAssetsAtPath(path);
         var sprites = new List<Sprite>();
@@ -185,17 +256,14 @@ public class ProjectInitializer
             int bi = int.TryParse(bParts[bParts.Length - 1], out var bVal) ? bVal : 0;
             return ai.CompareTo(bi);
         });
-        foreach (var (field, from, count) in PlayerAnimFields)
+        foreach (var (field, index) in PlayerSingleSpriteFields)
         {
+            if (index >= sprites.Count) { Debug.LogWarning($"[Setup] 실제 스프라이트 수 부족 ({sprites.Count}개)으로 {field} 할당 실패"); continue; }
             var p = so.FindProperty(field);
             if (p == null) { Debug.LogWarning($"[Setup] 필드 없음: {field}"); continue; }
-            int actual = Mathf.Min(count, Mathf.Max(0, sprites.Count - from));
-            if (actual <= 0) continue;
-            p.arraySize = actual;
-            for (int i = 0; i < actual; i++)
-                p.GetArrayElementAtIndex(i).objectReferenceValue = sprites[from + i];
+            p.objectReferenceValue = sprites[index];
         }
-        Debug.Log($"[Setup] 플레이어 애니메이션 스프라이트 {sprites.Count}개 자동 할당 완료");
+        Debug.Log($"[Setup] 플레이어 방향 스프라이트 {PlayerSingleSpriteFields.Length}장 자동 할당 완료");
     }
 
     private static void SetSprArr(SerializedObject so, string field, string path)
@@ -226,6 +294,18 @@ public class ProjectInitializer
         foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path))
             if (o is Sprite s && s.name==name) return s;
         return AssetDatabase.LoadAssetAtPath<Sprite>(path); // fallback: 메인
+    }
+
+    // 슬라이스된 스프라이트 시트에서 인덱스로 하나 가져오기
+    private static Sprite SubSprIdx(string path, int index)
+    {
+        var all = AssetDatabase.LoadAllAssetsAtPath(path);
+        var sprites = new System.Collections.Generic.List<Sprite>();
+        foreach (var o in all)
+            if (o is Sprite s) sprites.Add(s);
+        if (sprites.Count > index) return sprites[index];
+        if (sprites.Count > 0) return sprites[0];
+        return null;
     }
 
     private static AudioClip Clip(string path)
@@ -381,9 +461,16 @@ public class ProjectInitializer
         const string GOTHIC = ENV + "/Gothic";
 
         // 스프라이트 로드
-        Sprite floorTile    = AssetDatabase.LoadAssetAtPath<Sprite>(TILES  + "/GroundTile.png");
-        Sprite hollowTile   = AssetDatabase.LoadAssetAtPath<Sprite>(TILES  + "/HollowTile.png");
-        Sprite checkerTile  = AssetDatabase.LoadAssetAtPath<Sprite>(TILES  + "/CheckerTile.png");
+        // tile.png 슬라이스 로드 (11열×7행=77장, 인덱스 0부터)
+        const string TILE_PATH = "Assets/Resources/tile.png";
+        var tileObjs = AssetDatabase.LoadAllAssetsAtPath(TILE_PATH);
+        var tileList = new System.Collections.Generic.List<Sprite>();
+        foreach (var o in tileObjs)
+            if (o is Sprite s) tileList.Add(s);
+        // 인덱스 범위 초과 시 0번 폴백
+        System.Func<int, Sprite> T = i => tileList.Count > i ? tileList[i]
+                                        : (tileList.Count > 0 ? tileList[0] : null);
+
         Sprite stoneWall    = AssetDatabase.LoadAssetAtPath<Sprite>(GOTHIC + "/Stone.png");
         Sprite stairsSpr    = AssetDatabase.LoadAssetAtPath<Sprite>(GOTHIC + "/Pentagram_Activated.png");
         Sprite darkBg       = AssetDatabase.LoadAssetAtPath<Sprite>(BG_DIR + "/DarkBackground.png");
@@ -413,7 +500,7 @@ public class ProjectInitializer
         config.themes[0] = new FloorTheme
         {
             themeName          = "석조 지하실",
-            floorSprite        = floorTile,
+            floorSprite        = T(0),  // 밝은 회색 크랙 돌
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = darkBg,
@@ -430,7 +517,7 @@ public class ProjectInitializer
         config.themes[1] = new FloorTheme
         {
             themeName          = "음산한 지하묘지",
-            floorSprite        = hollowTile,
+            floorSprite        = T(33), // 어두운 크랙 석판
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = darkBg,
@@ -447,7 +534,7 @@ public class ProjectInitializer
         config.themes[2] = new FloorTheme
         {
             themeName          = "마법 비전실",
-            floorSprite        = checkerTile,
+            floorSprite        = T(44), // 코블스톤 포장돌
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = blueBg,
@@ -464,7 +551,7 @@ public class ProjectInitializer
         config.themes[3] = new FloorTheme
         {
             themeName          = "용암 지대",
-            floorSprite        = floorTile,
+            floorSprite        = T(12), // 어두운 갈색 흔흥 흐응
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = darkBg,
@@ -481,7 +568,7 @@ public class ProjectInitializer
         config.themes[4] = new FloorTheme
         {
             themeName          = "수몰 동굴",
-            floorSprite        = hollowTile,
+            floorSprite        = T(22), // 회색빛 젖은 돌
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = blueBg,
@@ -498,7 +585,7 @@ public class ProjectInitializer
         config.themes[5] = new FloorTheme
         {
             themeName          = "고대 유적",
-            floorSprite        = checkerTile,
+            floorSprite        = T(27), // 모래/자갈 돌코스
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = dustyBg,
@@ -515,7 +602,7 @@ public class ProjectInitializer
         config.themes[6] = new FloorTheme
         {
             themeName          = "수정 동굴",
-            floorSprite        = floorTile,
+            floorSprite        = T(3),  // 연한 회색 크랙 돌
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = brickBg,
@@ -532,7 +619,7 @@ public class ProjectInitializer
         config.themes[7] = new FloorTheme
         {
             themeName          = "화산 지하",
-            floorSprite        = hollowTile,
+            floorSprite        = T(36), // 어두운 아스팔트/섘어진 돌
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = darkBg,
@@ -549,7 +636,7 @@ public class ProjectInitializer
         config.themes[8] = new FloorTheme
         {
             themeName          = "심연의 그림자",
-            floorSprite        = checkerTile,
+            floorSprite        = T(66), // 짙은 슬레이트 석판
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = greyBg,
@@ -566,7 +653,7 @@ public class ProjectInitializer
         config.themes[9] = new FloorTheme
         {
             themeName          = "최종 심연",
-            floorSprite        = floorTile,
+            floorSprite        = T(70), // 매우 어두운 크랙 돌
             wallSprite         = stoneWall,
             stairsSprite       = stairsSpr,
             bgSprite           = darkBg,

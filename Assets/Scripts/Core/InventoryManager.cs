@@ -36,7 +36,7 @@ public class InventoryManager : MonoBehaviour
     public int PotionCount { get; private set; } = 0;
 
     // ── 장비 아이템박스 ──────────────────────────────────────────────────────
-    public const int EQUIP_SLOTS = 8;
+    public const int EQUIP_SLOTS = 4;
     private InventorySlot[] _equipSlots = new InventorySlot[EQUIP_SLOTS];
 
     // ── 무게 ─────────────────────────────────────────────────────────────────

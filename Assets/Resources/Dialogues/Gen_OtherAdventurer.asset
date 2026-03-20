@@ -1,0 +1,32 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0923e44943703d459c2da5a00d26850, type: 3}
+  m_Name: Gen_OtherAdventurer
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueSet
+  condition: 0
+  lines:
+  - character: 0
+    faceSpriteName: 
+    text: "\uC5BC\uB9C8 \uC804\uC5D0 \uAC80\uC740 \uB9DD\uD1A0\uB97C \uB450\uB978
+      \uBAA8\uD5D8\uAC00\uAC00 \uB2E4\uB140\uAC14\uC5C8\uB294\uB370, \uADF8 \uBD84\uB3C4
+      \uC81C\uBC95 \uAE4A\uC774 \uB0B4\uB824\uAC00\uC168\uB354\uB77C\uACE0\uC694.
+      \uC9C0\uAE08\uC740 \uC5B4\uB514 \uACC4\uC2E0\uC9C0..."
+  - character: 1
+    faceSpriteName: 
+    text: "\uD639\uC2DC \uD568\uAED8 \uD30C\uD2F0\uB97C \uC9DC\uBCFC \uC218 \uC788\uC9C4
+      \uC54A\uC744\uAE4C\uC694?"
+  - character: 0
+    faceSpriteName: 
+    text: "\uAE00\uC384\uC694, \uADF8\uBD84\uC740 \uD63C\uC790 \uB2E4\uB2C8\uB294
+      \uAC78 \uC120\uD638\uD558\uC168\uC5B4\uC694. \uB4E0\uB4E0\uD55C \uB3D9\uB8CC\uB294
+      \uADF8 \uC5B4\uB5A4 \uB9C8\uBC95 \uC544\uC774\uD15C\uBCF4\uB2E4 \uADC0\uC911\uD55C\uB370
+      \uB9D0\uC774\uC8E0."

@@ -72,7 +72,7 @@ public class ItemSlotUI : MonoBehaviour,
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.zero;
             rt.pivot     = new Vector2(0.5f, 1f);
-            rt.sizeDelta = new Vector2(360f, 120f);
+            rt.sizeDelta = new Vector2(440f, 140f);
 
             // ── 타이틀 바 ──────────────────────────────────────────────────
             var titleBar = new GameObject("TitleBar");
@@ -84,7 +84,7 @@ public class ItemSlotUI : MonoBehaviour,
             titleBarRt.anchorMax = new Vector2(1f, 1f);
             titleBarRt.pivot     = new Vector2(0.5f, 1f);
             titleBarRt.anchoredPosition = Vector2.zero;
-            titleBarRt.sizeDelta = new Vector2(0f, 44f);
+            titleBarRt.sizeDelta = new Vector2(0f, 54f);
             // 타이틀 Outline
             var titleBarOutline = titleBar.AddComponent<Outline>();
             titleBarOutline.effectColor = new Color(0.6f, 0.45f, 0.12f, 0.8f);
@@ -94,7 +94,7 @@ public class ItemSlotUI : MonoBehaviour,
             titleTextGo.transform.SetParent(titleBar.transform, false);
             _tooltipTitleText = titleTextGo.AddComponent<Text>();
             _tooltipTitleText.font       = font ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _tooltipTitleText.fontSize   = 19;
+            _tooltipTitleText.fontSize   = 24;
             _tooltipTitleText.fontStyle  = FontStyle.Bold;
             _tooltipTitleText.color      = new Color(1f, 0.88f, 0.50f);
             _tooltipTitleText.alignment  = TextAnchor.MiddleCenter;
@@ -117,7 +117,7 @@ public class ItemSlotUI : MonoBehaviour,
             iconBgRt.anchorMax = new Vector2(1f, 1f);
             iconBgRt.pivot     = new Vector2(0.5f, 1f);
             iconBgRt.anchoredPosition = Vector2.zero;
-            iconBgRt.sizeDelta = new Vector2(0f, 110f);
+            iconBgRt.sizeDelta = new Vector2(0f, 130f);
             _tooltipIconBgRt = iconBgRt;
 
             var iconGo = new GameObject("Icon");
@@ -129,7 +129,7 @@ public class ItemSlotUI : MonoBehaviour,
             iconRt.anchorMax = new Vector2(0.5f, 0.5f);
             iconRt.pivot     = new Vector2(0.5f, 0.5f);
             iconRt.anchoredPosition = Vector2.zero;
-            iconRt.sizeDelta = new Vector2(82f, 82f);
+            iconRt.sizeDelta = new Vector2(98f, 98f);
             _tooltipIconBg = iconBg;
             iconBg.SetActive(false);
 
@@ -138,7 +138,7 @@ public class ItemSlotUI : MonoBehaviour,
             child.transform.SetParent(_tooltip.transform, false);
             _tooltipText = child.AddComponent<Text>();
             _tooltipText.font            = font ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _tooltipText.fontSize        = 16;
+            _tooltipText.fontSize        = 19;
             _tooltipText.color           = new Color(0.95f, 0.90f, 0.78f);
             _tooltipText.alignment       = TextAnchor.UpperLeft;
             _tooltipText.supportRichText = true;
@@ -231,14 +231,14 @@ public class ItemSlotUI : MonoBehaviour,
             _tooltipTitleBar.SetActive(hasTitle);
             if (hasTitle && _tooltipTitleText != null)
                 _tooltipTitleText.text = title;
-            titleH = hasTitle ? 44f : 0f;
+            titleH = hasTitle ? 54f : 0f;
         }
 
         // ── 아이콘 영역 ────────────────────────────────────────────────────
         bool hasIcon = icon != null && _tooltipIconBg != null;
         if (_tooltipIconBg != null) _tooltipIconBg.SetActive(hasIcon);
         if (hasIcon && _tooltipIconImg != null) _tooltipIconImg.sprite = icon;
-        float iconH = hasIcon ? 110f : 0f;
+        float iconH = hasIcon ? 130f : 0f;
         // 아이콘 위치 = 타이틀 바 바로 아래
         if (_tooltipIconBgRt != null)
             _tooltipIconBgRt.anchoredPosition = new Vector2(0f, -titleH);
@@ -249,13 +249,13 @@ public class ItemSlotUI : MonoBehaviour,
         int lines = 0;
         foreach (char c in text) if (c == '\n') lines++;
         lines++;
-        float textH = 12f + lines * 24f + 12f;
+        float textH = 12f + lines * 27f + 16f;
         // 텍스트 영역 offsetMax: 타이틀 + 아이콘 높이 아래에서 시작
         if (_tooltipTextRt != null)
             _tooltipTextRt.offsetMax = new Vector2(-14f, -(titleH + iconH + 10f));
 
         var trt = _tooltip.GetComponent<RectTransform>();
-        trt.sizeDelta = new Vector2(360f, titleH + iconH + textH);
+        trt.sizeDelta = new Vector2(440f, titleH + iconH + textH);
         if (slotRt != null) PositionTooltipBelowSlot(slotRt);
         _tooltip.transform.SetAsLastSibling();
         _tooltip.SetActive(true);

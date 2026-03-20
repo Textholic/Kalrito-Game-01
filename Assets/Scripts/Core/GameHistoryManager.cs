@@ -35,6 +35,13 @@ public class GameHistoryManager : MonoBehaviour
     public int TotalGoldObtained   { get; private set; } = 0;
     public int TotalSurpriseAttacks{ get; private set; } = 0;  // 직입당한 횟수
 
+    // ── 영구 저장 데이터 (이력 초기화 시 함께 리셋) ──────────────────────────
+    /// <summary>상점에 입금한 보존 골드 (사망해도 유지, 이력 초기화 시 소멸).</summary>
+    public int VaultGold            { get; private set; } = 0;
+
+    /// <summary>각인을 제거한 누적 횟수. 비용 계산에 사용 (1000→2000→4000→...).</summary>
+    public int EngravingRemoveCount { get; private set; } = 0;
+
     private Dictionary<string, int>  _monsterKills   = new Dictionary<string, int>();
     private Dictionary<string, bool> _achievements   = new Dictionary<string, bool>();
 
@@ -48,6 +55,8 @@ public class GameHistoryManager : MonoBehaviour
     private const string K_SURPRISE    = "hist_surprise";
     private const string K_KILLS_JSON  = "hist_kills";
     private const string K_ACH_JSON    = "hist_achievements";
+    private const string K_VAULT_GOLD  = "hist_vaultGold";
+    private const string K_ENG_REMOVE  = "hist_engRemove";
 
     public event System.Action<string> OnAchievementUnlocked; // (id)
 
@@ -141,6 +150,36 @@ public class GameHistoryManager : MonoBehaviour
     public Dictionary<string, bool> GetAllAchievements()
         => new Dictionary<string, bool>(_achievements);
 
+    // ── 상점 금고 (보존 골드) ─────────────────────────────────────────────────
+    /// <summary>플레이어 골드를 금고에 입금. 사망해도 보존됨.</summary>
+    public bool DepositGold(int amount)
+    {
+        if (amount <= 0) return false;
+        var player = GameManager.Instance?.Player;
+        if (player == null || !player.SpendGold(amount)) return false;
+        VaultGold += amount;
+        SaveToPrefs();
+        return true;
+    }
+
+    /// <summary>금고에서 플레이어에게 골드 출금.</summary>
+    public bool WithdrawGold(int amount)
+    {
+        if (amount <= 0 || amount > VaultGold) return false;
+        VaultGold -= amount;
+        GameManager.Instance?.Player?.AddGold(amount);
+        SaveToPrefs();
+        return true;
+    }
+
+    // ── 각인 제거 이력 ────────────────────────────────────────────────────────
+    /// <summary>각인 제거 횟수를 1 증가시킴. EngravingManager.TryRemoveEngraving()에서 호출.</summary>
+    public void RecordEngravingRemove()
+    {
+        EngravingRemoveCount++;
+        SaveToPrefs();
+    }
+
     // ── 이력 초기화 ──────────────────────────────────────────────────────────
     public void ResetHistory()
     {
@@ -148,6 +187,8 @@ public class GameHistoryManager : MonoBehaviour
         TotalItemsObtained   = 0;
         TotalGoldObtained    = 0;
         TotalSurpriseAttacks = 0;
+        VaultGold            = 0;
+        EngravingRemoveCount = 0;
         _monsterKills.Clear();
         _achievements.Clear();
         _currentRunSurpriseFreeFloors = 0;
@@ -158,10 +199,12 @@ public class GameHistoryManager : MonoBehaviour
     // ── PlayerPrefs 저장/불러오기 ────────────────────────────────────────────
     private void SaveToPrefs()
     {
-        PlayerPrefs.SetInt(K_MAX_FLOOR, MaxFloorReached);
-        PlayerPrefs.SetInt(K_ITEMS,     TotalItemsObtained);
-        PlayerPrefs.SetInt(K_GOLD,      TotalGoldObtained);
-        PlayerPrefs.SetInt(K_SURPRISE,  TotalSurpriseAttacks);
+        PlayerPrefs.SetInt(K_MAX_FLOOR,  MaxFloorReached);
+        PlayerPrefs.SetInt(K_ITEMS,      TotalItemsObtained);
+        PlayerPrefs.SetInt(K_GOLD,       TotalGoldObtained);
+        PlayerPrefs.SetInt(K_SURPRISE,   TotalSurpriseAttacks);
+        PlayerPrefs.SetInt(K_VAULT_GOLD, VaultGold);
+        PlayerPrefs.SetInt(K_ENG_REMOVE, EngravingRemoveCount);
 
         // 몬스터 킬 직렬화
         var killList = new List<KillRecord>();
@@ -180,10 +223,12 @@ public class GameHistoryManager : MonoBehaviour
 
     private void LoadFromPrefs()
     {
-        MaxFloorReached      = PlayerPrefs.GetInt(K_MAX_FLOOR, 0);
-        TotalItemsObtained   = PlayerPrefs.GetInt(K_ITEMS,     0);
-        TotalGoldObtained    = PlayerPrefs.GetInt(K_GOLD,      0);
-        TotalSurpriseAttacks = PlayerPrefs.GetInt(K_SURPRISE,  0);
+        MaxFloorReached      = PlayerPrefs.GetInt(K_MAX_FLOOR,  0);
+        TotalItemsObtained   = PlayerPrefs.GetInt(K_ITEMS,      0);
+        TotalGoldObtained    = PlayerPrefs.GetInt(K_GOLD,       0);
+        TotalSurpriseAttacks = PlayerPrefs.GetInt(K_SURPRISE,   0);
+        VaultGold            = PlayerPrefs.GetInt(K_VAULT_GOLD, 0);
+        EngravingRemoveCount = PlayerPrefs.GetInt(K_ENG_REMOVE, 0);
 
         // 몬스터 킬
         string killJson = PlayerPrefs.GetString(K_KILLS_JSON, "");

@@ -1,0 +1,29 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0923e44943703d459c2da5a00d26850, type: 3}
+  m_Name: Gen_Rumor
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueSet
+  condition: 0
+  lines:
+  - character: 0
+    faceSpriteName: 
+    text: "\uC694\uC998 \uC0C1\uC778\uB4E4 \uC0AC\uC774\uC5D0 \uC18C\uBB38\uC774
+      \uB3CC\uB354\uAD70\uC694. \uB358\uC804 \uAE4A\uC219\uD55C \uACF3\uC5D0 \uC7A0\uB4E0
+      \uC6A9\uC774 \uC788\uB2E4\uB294 \uAC70\uC608\uC694. \uBB50, \uC18C\uBB38\uC774\uACA0\uC9C0\uB9CC..."
+  - character: 1
+    faceSpriteName: 
+    text: "\uC6A9\uC774\uC694? \uC544\uC9C1 \uADF8\uB7F0 \uAC74 \uBABB \uBD24\uB294\uB370,
+      \uB354 \uAE4A\uC774 \uB0B4\uB824\uAC00\uBA74 \uC54C\uAC8C \uB420 \uAC83 \uAC19\uC740\uB370\uC694."
+  - character: 0
+    faceSpriteName: 
+    text: "\uC81C\uBC1C \uB9CC\uB098\uC9C0 \uC54A\uB294 \uAC8C \uCD5C\uC120\uC785\uB2C8\uB2E4.
+      \uBAA8\uD5D8\uAC00 \uC591\uBC18."

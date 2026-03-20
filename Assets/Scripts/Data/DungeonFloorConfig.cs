@@ -54,6 +54,19 @@ public class DungeonFloorConfig : ScriptableObject
     [Tooltip("맵 세로 크기 (타일)")]
     public int mapHeight = 25;
 
+    [Header("보스 룸 설정")]
+    [Tooltip("보스 룸으로 연결되는 복도 길이 (타일 수, 기본 8)")]
+    public int  bossCorridorLength  = 8;
+
+    [Tooltip("보스 룸 복도에 문(Door)을 배치 (항상 true 권장)")]
+    public bool bossCorridorHasDoor = true;
+
+    [Tooltip("보스 룸 문 옆 상점 자동 배치 여부 (기본 true)")]
+    public bool hasBossRoomShop     = true;
+
+    [Tooltip("다음 층 포탈은 보스 룸 내에만 생성됨 (항상 true, 참고용)")]
+    public bool portalOnlyInBossRoom = true;
+
     [Header("층수 구간별 상세 설정 (5층 단위 6구간)")]
     public FloorTierConfig[] tiers;
 

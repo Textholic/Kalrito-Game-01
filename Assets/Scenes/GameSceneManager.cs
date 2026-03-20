@@ -7,9 +7,9 @@ using System.Collections.Generic;
 public class GameSceneManager : MonoBehaviour
 {
     // ── 맵 설정 ──────────────────────────────────────────────────────────────
-    private const int   MapWidth  = 40;
-    private const int   MapHeight = 25;
-    private const float TileSize  = 1.0f;
+    private const int   MapWidth  = 64;
+    private const int   MapHeight = 48;
+    private const float TileSize  = 2.0f;
 
     private char[,] map;
     private bool[,] explored;
@@ -23,37 +23,39 @@ public class GameSceneManager : MonoBehaviour
 
     [Header("Entity Sprites")]
     [SerializeField] private Sprite playerSprite;  // 시트 미연결 시 폴백 단일 스프라이트
-    [Header("Player Animation Sprites")]
-    [Tooltip("IDLE 4프레임 (아래 방향 대기)")]
-    [SerializeField] private Sprite[] playerIdleSprites;
-    [Tooltip("WALK DOWN 4프레임 (없으면 Idle 사용)")]
-    [SerializeField] private Sprite[] playerWalkDownSprites;
-    [Tooltip("WALK UP 4프레임")]
-    [SerializeField] private Sprite[] playerWalkUpSprites;
-    [Tooltip("WALK LEFT 4프레임")]
-    [SerializeField] private Sprite[] playerWalkLeftSprites;
-    [Tooltip("WALK RIGHT 4프레임")]
-    [SerializeField] private Sprite[] playerWalkRightSprites;
-    [Tooltip("DOWNED 4프레임 — 사망 시에만 재생")]
-    [SerializeField] private Sprite[] playerDownedSprites;
-    // 몬스터 3종
-    [SerializeField] private Sprite enemy1Sprite;  // GothicEnemy01
-    [SerializeField] private Sprite enemy2Sprite;  // GothicEnemy02
-    [SerializeField] private Sprite enemy3Sprite;  // FireheadEnemy
+    [Header("Player Direction Sprites (방향당 1장)")]
+    [Tooltip("아래 방향 / 대기 스프라이트")]
+    [SerializeField] private Sprite playerSpriteDown;
+    [Tooltip("위 방향 스프라이트")]
+    [SerializeField] private Sprite playerSpriteUp;
+    [Tooltip("왼쪽 방향 스프라이트")]
+    [SerializeField] private Sprite playerSpriteLeft;
+    [Tooltip("오른쪽 방향 스프라이트")]
+    [SerializeField] private Sprite playerSpriteRight;
+    [Tooltip("쓰러짐 스프라이트 (사망 시)")]
+    [SerializeField] private Sprite playerSpriteDowned;
+    [Header("Enemy Slots (최대 30종 — Inspector에서 등록)")]
+    [SerializeField] private EnemySlot[] enemySlots = new EnemySlot[0];
 
     [Header("Item Sprites")]
     [SerializeField] private Sprite potionSprite;  // Potion.png
     [SerializeField] private Sprite goldSmSprite;  // Coin.png  (소형 골드)
     [SerializeField] private Sprite goldLgSprite;  // Diamond.png (대형 골드)
 
-    [Header("Treasure Chest Sprites")]
-    [Tooltip("아이템 상자 스프라이트 (닫힌 상태)")]
+    [Header("Treasure Chest Sprites (lootbox.png)")]
+    [Tooltip("닫힌 상자 스프라이트 — 생략 시 Resources/lootbox.png 슬라이스 0 자동 로드")]
     [SerializeField] private Sprite chestClosedSprite;
-    [Tooltip("아이템 상자 스프라이트 (열린 상태)")]
+    [Tooltip("열린 상자 스프라이트 — 생략 시 Resources/lootbox.png 슬라이스 1 자동 로드")]
     [SerializeField] private Sprite chestOpenedSprite;
 
     [Header("Background")]
     [SerializeField] private Sprite bgSprite;
+
+    [Header("Boss Corridor Sprites")]
+    [Tooltip("보스 복도 입구 문 스프라이트 (Gothic/Door.png)")]
+    [SerializeField] private Sprite   doorSprite;
+    [Tooltip("상점 NPC 스프라이트 두 장 (shop.png 슬라이스) — 람덤 표시")]
+    [SerializeField] private Sprite[] shopNpcSprites;
 
     [Header("HUD Sprites (Brackeys)")]
     [SerializeField] private Sprite inventoryIconSprite;   // Scroll.png
@@ -66,32 +68,75 @@ public class GameSceneManager : MonoBehaviour
     [SerializeField] private AudioClip sfxGameOver;  // GameOver.wav
     [SerializeField] private AudioClip sfxStairs;    // Spawn.wav
     [SerializeField] private AudioClip sfxEnemyHit;  // GruntVoice01.wav
+    [Tooltip("루트박스·문 열기 사운드 (Assets/Sounds/lootbox_open.ogg)")]
+    [SerializeField] private AudioClip sfxLootboxOpen;
+    [Tooltip("적 사망 사운드 풀 (Assets/Sounds/death_sound01~03.ogg 랜덤)")]
+    [SerializeField] private AudioClip[] sfxDeathPool;
     [SerializeField] private AudioClip bgmCombat;    // Click.wav → 배경음으로 루프
-    
+    [Tooltip("보스방 전용 BGM 목록 (진입 시 랜덤 재생, 없으면 bgmCombat 유지)")]
+    [SerializeField] private AudioClip[] bgmBossPool; // Assets/Sounds/Character/boss_01~10.ogg
+
     private AudioSource bgmSource;
     private AudioSource sfxSource;
+    private AudioClip   _preBossBgm; // 보스방 진입 전 재생 중이던 BGM 저장용
+
+    // ── 에너미 슬롯 정의 (Inspector에서 최대 30종 등록) ─────────────────────
+    [System.Serializable]
+    public class EnemySlot
+    {
+        [Tooltip("몬스터 이름")]
+        public string name        = "몬스터";
+        [Tooltip("적 설명 (최대 50자 권장)")]
+        [TextArea(1, 2)]
+        public string description = "";
+        [Tooltip("보스 몬스터 여부 — 체크 시 3층마다 보스층에만 완정 1마리 등장")]
+        public bool   isBoss      = false;
+        [Tooltip("오른쪽 바라보는 스프라이트")]
+        public Sprite spriteRight;
+        [Tooltip("왼쪽 바라보는 스프라이트 (없으면 spriteRight 반전)")]
+        public Sprite spriteLeft;
+        [Tooltip("스프라이트 틴트 색상")]
+        public Color  color       = Color.white;
+        [Tooltip("체력 배율 (기준 대비, 기본 1.0)")]
+        [Range(0.1f, 10f)] public float hpScale  = 1f;
+        [Tooltip("공격력 배율 (기본 1.0)")]
+        [Range(0.1f, 10f)] public float atkScale = 1f;
+        [Tooltip("경험치 배율 (기본 1.0)")]
+        [Range(0.1f, 10f)] public float expScale = 1f;
+        [Tooltip("보스 전용 BGM (isBoss=true & bgmBoss 미설정 시 대체로 사용)")]
+        public AudioClip bossBattleBgm;
+    }
 
     // ── 엔티티 ─────────────────────────────────────────────────────────────
-    public enum MonsterType { Goblin, Orc, FireDemon }
     private enum PlayerFacing { Down, Up, Left, Right }
 
     [System.Serializable]
     public class Entity
     {
         public string      name;
+        public string      description; // EnemySlot.description에서 복사
+        public bool        isBoss;      // EnemySlot.isBoss에서 복사
         public Vector2Int  pos;
         public int         hp, maxHp, attack, exp;
-        public MonsterType type;
+        public int         typeIndex = -1;  // enemySlots 인덱스 (-1 = 플레이어)
         public GameObject  go;
         public bool        isAggro; // 한 번 발견하면 시야 밖에서도 추적
+
+        // ── 스프라이트 방향 ──────────────────────────────────────
+        /// <summary>오른쪽 바라보는 스프라이트 (null이면 기본 스프라이트 사용).</summary>
+        public Sprite spriteRight;
+        /// <summary>왼쪽 바라보는 스프라이트 (null이면 spriteRight를 flipX로 대체).</summary>
+        public Sprite spriteLeft;
+        /// <summary>true = 오른쪽을 바라보는 중.</summary>
+        public bool   facingRight = true;
 
         // 플레이어용
         public Entity(string name, int hp, int attack)
         { this.name=name; this.hp=hp; this.maxHp=hp; this.attack=attack; }
 
-        // 몬스터용
-        public Entity(string name, int hp, int attack, int exp, MonsterType type)
-        { this.name=name; this.hp=hp; this.maxHp=hp; this.attack=attack; this.exp=exp; this.type=type; }
+        // 몬스터용 (슬롯 인덱스)
+        public Entity(string name, int hp, int attack, int exp, int typeIdx = -1)
+        { this.name=name; this.hp=hp; this.maxHp=hp; this.attack=attack; this.exp=exp; this.typeIndex=typeIdx; }
     }
 
     // ── 아이템 ─────────────────────────────────────────────────────────────
@@ -142,7 +187,8 @@ public class GameSceneManager : MonoBehaviour
     public class TreasureChest
     {
         public Vector2Int pos;
-        public GameObject go;
+        public GameObject go;    // 하단 레이어 오브젝트 (항상 표시)
+        public GameObject topGo; // 상단 레이어 오브젝트 (닫힘↔열림 전환)
         public bool       opened = false;
     }
 
@@ -159,9 +205,9 @@ public class GameSceneManager : MonoBehaviour
     private int _equipDef = 0;
     private int _equipMaxHp = 0;
     private int _equipHeal  = 0;
-    // 보물상자에서 획득한 장비 목록 (층 이동 후에도 유지) — FIFO 최대 8개
+    // 보물상자에서 획득한 장비 목록 (층 이동 후에도 유지) — FIFO 최대 4개
     private readonly List<EquipmentItemDef>  _chestEquipList    = new List<EquipmentItemDef>();
-    private const int EQUIP_INV_MAX = 8;
+    private const int EQUIP_INV_MAX = 4;
 
     // ── 메인 아이템 인벤토리 (2D 그리드, 아이템은 이미지로 표시) ─────────────
     // 인덱스: col + row * _mainInvCols
@@ -181,16 +227,58 @@ public class GameSceneManager : MonoBehaviour
     private DungeonThemeConfig DungeonThemeCfg => _dungeonThemeCfg != null ? _dungeonThemeCfg
         : (_dungeonThemeCfg = Resources.Load<DungeonThemeConfig>("DungeonThemeConfig"));
     private FloorTheme CurrentTheme => DungeonThemeCfg?.GetThemeForFloor(currentLevel);
+    // DungeonThemeConfig 없을 때 tile.png를 직접 사용하기 위한 캐시 + 인덱스
+    private Sprite[] _cachedTileSprites;
+    private static readonly int[] ThemeTileIndices = { 0, 33, 44, 12, 22, 27, 3, 36, 66, 70 };
+
+    // 층 테마별 색상 (DungeonThemeConfig 없을 때 UpdateVisibility 폴백용)
+    private static readonly Color[] ThemeFloorColors =
+    {
+        new Color(0.80f, 0.70f, 0.55f),  // 0: 고전 던전 (황갈색)
+        new Color(0.45f, 0.62f, 0.40f),  // 1: 이끼 석굴 (초록)
+        new Color(0.42f, 0.52f, 0.72f),  // 2: 청석 지하 (청색)
+        new Color(0.68f, 0.40f, 0.30f),  // 3: 붉은 동굴 (적색)
+        new Color(0.35f, 0.56f, 0.52f),  // 4: 심해 유적 (청록)
+        new Color(0.72f, 0.64f, 0.34f),  // 5: 모래 폐허 (모래색)
+        new Color(0.58f, 0.44f, 0.72f),  // 6: 수정 동굴 (보라)
+        new Color(0.64f, 0.56f, 0.36f),  // 7: 고대 석조 (어두운 갈색)
+        new Color(0.28f, 0.44f, 0.52f),  // 8: 깊은 심연 (어두운 청)
+        new Color(0.22f, 0.20f, 0.24f),  // 9: 흑요석 (거의 검정)
+    };
+    private Color _currentFloorVisColor = new Color(0.80f, 0.70f, 0.55f);
+    private Color _currentFloorDimColor = new Color(0.30f, 0.26f, 0.20f);
+    private Color _currentWallVisColor  = new Color(0.55f, 0.46f, 0.36f);
+    private Color _currentWallDimColor  = new Color(0.18f, 0.15f, 0.12f);
 
     private bool          isProcessingTurn = false;
     private Queue<string> gameLogs = new Queue<string>();
 
     // ── 사망 통계 추적 ──────────────────────────────────────────────────────
-    private int killsGoblin     = 0;
-    private int killsOrc        = 0;
-    private int killsFireDemon  = 0;
+    private int _totalKills     = 0;
     private int potionsPickedUp = 0;
     private int potionInventory = 0;  // 소지 물약 수 (소비 전)
+
+    // ── 보스룸 시스템 ──────────────────────────────────────────────────────
+    private RectInt?    _bossRoomRect    = null;   // 보스방 영역 (보스층만 유효)
+    private RectInt?    _bossCorridorRect = null;  // 보스 복도 영역 (복도 진입 시 BGM/HUD 활성)
+    private RectInt?    _portalRoomRect  = null;   // 포탈룸 영역 (비보스층만 유효)
+    private Vector2Int  _corridorDoorPos;           // 복도 시작 타일 (도어 위치)
+    private Vector2Int  _shopNpcPos;                // 상점 NPC 위치 (도어 옆)
+    private Entity      _bossEntity     = null;    // 현재 층 보스 엔티티 참조
+    private bool        _playerInBossRoom = false; // 플레이어 보스방 또는 복도 체류 여부
+    private bool        _corridorDoorPassed = false; // 보스 복도 문 첫 통과 여부 (도어 사운드용)
+    private bool        _shopActive = false;           // 이번 층 상점 NPC 활성 여부 (보스 처치 후에도 유지)
+    // 보스 HUD 위젯
+    private GameObject  _bossHudRoot;
+    private Text        _bossHudNameText;
+    private Text        _bossHudDescText;
+    private Text        _bossHudHpText;
+    private Image       _bossHudHpBar;
+    private RectTransform _bossHudHpBarRt;
+    // 상점 패널 위젯
+    private GameObject  _shopPanel;
+    private GameObject  _bossCorridorDoorGo; // 복도 입구 문 시각 오브젝트
+    private GameObject  _bossShopNpcGo;      // 상점 NPC 시각 오브젝트
 
     // ====================================================================
     void Start()
@@ -224,7 +312,8 @@ public class GameSceneManager : MonoBehaviour
         else if (Input.GetKeyDown(KeyCode.E)) ToggleEquipment();
         else if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (_inventoryPanel != null && _inventoryPanel.activeSelf) ToggleInventory();
+            if (_shopPanel        != null && _shopPanel.activeSelf)       { _shopPanel.SetActive(false); }
+            else if (_inventoryPanel != null && _inventoryPanel.activeSelf) ToggleInventory();
             else if (_equipmentPanel != null && _equipmentPanel.activeSelf) ToggleEquipment();
         }
         if (isProcessingTurn) return;
@@ -237,18 +326,61 @@ public class GameSceneManager : MonoBehaviour
     // ====================================================================
     private void EnsureSprites()
     {
-        if (floorSprite  == null) floorSprite  = MakeSolid(new Color(0.30f,0.26f,0.18f));
+        // tile.png 자동 로드 (Inspector 미할당 시 Resources에서 로드)
+        if (floorSprite == null)
+        {
+            var tileSprites = Resources.LoadAll<Sprite>("tile");
+            if (tileSprites != null && tileSprites.Length > 0)
+                floorSprite = tileSprites[0];
+            else
+                floorSprite = MakeSolid(new Color(0.30f, 0.26f, 0.18f));
+        }
         if (wallSprite   == null) wallSprite   = MakeSolid(new Color(0.12f,0.10f,0.08f));
         if (stairsSprite == null) stairsSprite = MakeSolid(new Color(0.8f, 0.3f, 1.0f));
         if (playerSprite == null) playerSprite = MakeSolid(Color.yellow);
-        if (enemy1Sprite == null) enemy1Sprite = MakeSolid(new Color(1f,0.4f,0.4f));
-        if (enemy2Sprite == null) enemy2Sprite = MakeSolid(new Color(1f,0.3f,0.2f));
-        if (enemy3Sprite == null) enemy3Sprite = MakeSolid(new Color(1f,0.1f,0.0f));
-        if (potionSprite == null) potionSprite = MakeSolid(new Color(0.4f,1f,0.4f));
+        // potion.png 자동 로드
+        if (potionSprite == null)
+        {
+            var s = Resources.Load<Sprite>("potion");
+            Debug.Log($"[EnsureSprites] potion load: {(s != null ? s.name : "NULL")}");
+            potionSprite = s != null ? s : MakeSolid(new Color(0.4f,1f,0.4f));
+        }
+        else Debug.Log($"[EnsureSprites] potionSprite already set: {potionSprite.name}");
+        // inventory.png 자동 로드
+        if (inventoryIconSprite == null)
+        {
+            inventoryIconSprite = Resources.Load<Sprite>("inventory");
+            Debug.Log($"[EnsureSprites] inventory load: {(inventoryIconSprite != null ? inventoryIconSprite.name : "NULL")}");
+        }
+        else Debug.Log($"[EnsureSprites] inventoryIconSprite already set: {inventoryIconSprite.name}");
+        // skills.png 자동 로드
+        if (equipmentIconSprite == null)
+        {
+            equipmentIconSprite = Resources.Load<Sprite>("skills");
+            Debug.Log($"[EnsureSprites] skills load: {(equipmentIconSprite != null ? equipmentIconSprite.name : "NULL")}");
+        }
+        else Debug.Log($"[EnsureSprites] equipmentIconSprite already set: {equipmentIconSprite.name}");
         if (goldSmSprite == null) goldSmSprite = MakeSolid(new Color(1f,0.9f,0.2f));
         if (goldLgSprite == null) goldLgSprite = MakeSolid(new Color(1f,0.7f,0.0f));
-        if (chestClosedSprite == null) chestClosedSprite = MakeSolid(new Color(0.65f, 0.42f, 0.12f));
-        if (chestOpenedSprite == null) chestOpenedSprite = MakeSolid(new Color(0.35f, 0.22f, 0.06f));
+        // lootbox.png 스프라이트 자동 로드 (Inspector 미할당 시 Resources에서 첫 2개 슬라이스 사용)
+        if (chestClosedSprite == null || chestOpenedSprite == null)
+        {
+            var lootSprites = Resources.LoadAll<Sprite>("lootbox");
+            if (lootSprites != null && lootSprites.Length >= 2)
+            {
+                if (chestClosedSprite  == null) chestClosedSprite  = lootSprites[0];
+                if (chestOpenedSprite  == null) chestOpenedSprite  = lootSprites[1];
+            }
+        }
+        if (chestClosedSprite  == null) chestClosedSprite  = MakeSolid(new Color(0.82f, 0.54f, 0.18f));
+        if (chestOpenedSprite  == null) chestOpenedSprite  = MakeSolid(new Color(0.35f, 0.22f, 0.06f));
+        // shop.png 슬라이스 자동 로드 (Inspector 미할당 시)
+        if (shopNpcSprites == null || shopNpcSprites.Length == 0)
+        {
+            var shopSprites = Resources.LoadAll<Sprite>("shop");
+            if (shopSprites != null && shopSprites.Length > 0)
+                shopNpcSprites = shopSprites;
+        }
         if (bgSprite     == null) bgSprite     = MakeSolid(new Color(0.05f,0.04f,0.06f));
         // Inspector 원본 보존 (ApplyDungeonTheme이 덮어쓸 때 폴백으로 사용)
         _origFloorSprite  = floorSprite;
@@ -307,7 +439,7 @@ public class GameSceneManager : MonoBehaviour
             mainCam = co.AddComponent<Camera>();
         }
         mainCam.orthographic     = true;
-        mainCam.orthographicSize = 8f;
+        mainCam.orthographicSize = 11.52f;
         mainCam.backgroundColor  = new Color(0.04f,0.04f,0.06f);
         mainCam.clearFlags       = CameraClearFlags.SolidColor;
         var p = mainCam.transform.position;
@@ -508,6 +640,12 @@ public class GameSceneManager : MonoBehaviour
         hr.sizeDelta = new Vector2(1000,30);
         help.text = "WASD/방향키: 이동  |  공격: 적 방향  |  아이템: 밟으면 획득  |  [1]: 물약  |  [I]: 인벤토리  |  [E]: 장비  |  [ESC]: 패널 닫기";
 
+        // ── 보스 HUD (기본 숨김 — 보스방 진입 시 표시) ──────────────────────
+        BuildBossHud(canvas);
+
+        // ── 상점 패널 (기본 숨김 — 상점 NPC 진입 시 표시) ───────────────────
+        BuildShopPanel(canvas);
+
         if (FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>()==null)
         {
             var es = new GameObject("EventSystem");
@@ -516,6 +654,316 @@ public class GameSceneManager : MonoBehaviour
         }
     }
 
+    // ====================================================================
+    // 보스 HUD 빌드 (상단 중앙, 기본 숨김)
+    // ====================================================================
+    private void BuildBossHud(Canvas canvas)
+    {
+        // 루트 패널 — 상단 중앙 (화면 너비 80% = 1536px 기준, 높이 155px)
+        _bossHudRoot = MakePanel(canvas.transform, "BossHUD",
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -16f), new Vector2(1536f, 155f),
+            new Color(0.06f, 0.02f, 0.02f, 0.93f));
+
+        // 보스 이름 (상단)
+        _bossHudNameText = MakeText(_bossHudRoot.transform, "BossName",
+            new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(12f, -52f), new Vector2(-12f, -10f),
+            36, new Color(1f, 0.45f, 0.45f), TextAnchor.MiddleCenter);
+
+        // 보스 설명 (이름 아래)
+        _bossHudDescText = MakeText(_bossHudRoot.transform, "BossDesc",
+            new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(12f, -84f), new Vector2(-12f, -54f),
+            22, new Color(0.8f, 0.6f, 0.6f), TextAnchor.MiddleCenter);
+
+        // HP 바 테두리 (어두운 외곽선 패널)
+        var hpBorder = MakePanel(_bossHudRoot.transform, "HpBorder",
+            new Vector2(0.05f, 0f), new Vector2(0.95f, 0f), new Vector2(0f, 0f),
+            new Vector2(0f, 18f), new Vector2(0f, 40f),
+            new Color(0.04f, 0.01f, 0.01f, 1f));
+
+        // HP 바 배경 (테두리 안쪽, 어두운 색)
+        var hpBg = MakePanel(hpBorder.transform, "HpBg",
+            new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(-6f, -6f),
+            new Color(0.10f, 0.03f, 0.03f, 1f));
+
+        // HP 바 채워지는 부분 — anchorMax.x 로 너비를 비율로 제어 (sprite 없이도 동작)
+        var hpFillGo = new GameObject("HpFill");
+        hpFillGo.transform.SetParent(hpBg.transform, false);
+        _bossHudHpBar   = hpFillGo.AddComponent<Image>();
+        _bossHudHpBar.color = new Color(0.6f, 0.1f, 0.9f); // 초기: 보라색 (100%)
+        _bossHudHpBarRt = hpFillGo.GetComponent<RectTransform>();
+        _bossHudHpBarRt.anchorMin  = Vector2.zero;
+        _bossHudHpBarRt.anchorMax  = Vector2.one;   // 초기 100%
+        _bossHudHpBarRt.sizeDelta  = Vector2.zero;
+        _bossHudHpBarRt.offsetMin  = Vector2.zero;
+        _bossHudHpBarRt.offsetMax  = Vector2.zero;
+
+        // HP % 텍스트 (바 위에 중앙 표시)
+        _bossHudHpText = MakeText(hpBorder.transform, "HpText",
+            Vector2.zero, Vector2.one,
+            Vector2.zero, Vector2.zero,
+            20, new Color(1f, 0.92f, 0.92f), TextAnchor.MiddleCenter);
+
+        _bossHudRoot.SetActive(false);
+    }
+
+    private void ShowBossHud(Entity boss)
+    {
+        if (_bossHudRoot == null || boss == null) return;
+        if (_bossHudNameText != null) _bossHudNameText.text = $"★  {boss.name}  ★";
+        if (_bossHudDescText != null) _bossHudDescText.text = boss.description;
+        UpdateBossHud(boss);
+        _bossHudRoot.SetActive(true);
+    }
+
+    private void UpdateBossHud(Entity boss)
+    {
+        if (_bossHudRoot == null || !_bossHudRoot.activeSelf || boss == null) return;
+        float ratio = boss.maxHp > 0 ? (float)boss.hp / boss.maxHp : 0f;
+        if (_bossHudHpBar != null && _bossHudHpBarRt != null)
+        {
+            // anchorMax.x 로 너비 비율 조절 (왼쪽 고정, 오른쪽이 줄어듦)
+            _bossHudHpBarRt.anchorMax = new Vector2(Mathf.Clamp01(ratio), 1f);
+            _bossHudHpBarRt.offsetMax = Vector2.zero;
+            // 체력 비율에 따른 색상 변경
+            if      (ratio > 0.75f) _bossHudHpBar.color = new Color(0.6f, 0.1f, 0.9f);  // 보라 (76~100%)
+            else if (ratio > 0.50f) _bossHudHpBar.color = new Color(0.1f, 0.75f, 0.2f); // 초록 (51~75%)
+            else if (ratio > 0.25f) _bossHudHpBar.color = new Color(0.9f, 0.75f, 0.05f);// 노랑 (26~50%)
+            else                    _bossHudHpBar.color = new Color(0.9f, 0.1f, 0.1f);  // 빨강 (0~25%)
+        }
+        if (_bossHudHpText != null) _bossHudHpText.text = $"HP  {Mathf.RoundToInt(ratio * 100)} %";
+    }
+
+    private void HideBossHud()
+    {
+        if (_bossHudRoot != null) _bossHudRoot.SetActive(false);
+    }
+
+    // ====================================================================
+    // 상점 UI 빌드 (보스층 진입 시 창 숨겨둠, 상점 NPC 밟을 때 표시)
+    // ====================================================================
+    private void BuildShopPanel(Canvas canvas)
+    {
+        if (_shopPanel != null) return; // 이미 빌드됨
+
+        // 루트 패널 — 화면 중앙 (560×380)
+        _shopPanel = MakePanel(canvas.transform, "ShopPanel",
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(560f, 380f),
+            new Color(0.05f, 0.08f, 0.04f, 0.97f));
+
+        // 제목
+        var titleText = MakeText(_shopPanel.transform, "ShopTitle",
+            new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(10f, -55f), new Vector2(-10f, -8f),
+            32, new Color(0.3f, 1f, 0.5f), TextAnchor.MiddleCenter);
+        titleText.text = "🏪  상점 (복도 입구)";
+
+        // 닫기 버튼
+        var closeGo = new GameObject("CloseBtn"); closeGo.transform.SetParent(_shopPanel.transform, false);
+        var closeImg = closeGo.AddComponent<Image>(); closeImg.color = new Color(0.7f, 0.15f, 0.15f, 0.92f);
+        var closeRt = closeGo.GetComponent<RectTransform>();
+        closeRt.anchorMin = new Vector2(1f, 1f); closeRt.anchorMax = new Vector2(1f, 1f);
+        closeRt.pivot = new Vector2(1f, 1f);
+        closeRt.anchoredPosition = new Vector2(-8f, -8f); closeRt.sizeDelta = new Vector2(48f, 40f);
+        var closeBtn = closeGo.AddComponent<Button>();
+        closeBtn.onClick.AddListener(() => _shopPanel.SetActive(false));
+        MakeText(closeGo.transform, "X",
+            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero,
+            22, Color.white, TextAnchor.MiddleCenter).text = "✕";
+
+        // 안내 텍스트
+        MakeText(_shopPanel.transform, "GoldInfo",
+            new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(10f, -85f), new Vector2(-10f, -56f),
+            18, new Color(1f, 0.88f, 0.3f), TextAnchor.MiddleCenter).text =
+            "골드가 부족하면 구입할 수 없습니다.";
+
+        // 아이템 목록
+        string[] labels  = { "회복 물약\n(HP +40)", "고급 회복 물약\n(HP +100)", "물약 3개 묶음\n(HP +40 ×3)" };
+        int[]    basePrc = { 30, 80, 75 };
+        System.Action<int>[] buyCbs = new System.Action<int>[3];
+        for (int i = 0; i < 3; i++)
+        {
+            int idx = i;
+            float rowY = -110f - idx * 80f;
+
+            // 배경 행
+            var rowGo = new GameObject($"ShopRow{idx}");
+            rowGo.transform.SetParent(_shopPanel.transform, false);
+            var rowImg2 = rowGo.AddComponent<Image>();
+            rowImg2.color = new Color(0.08f, 0.16f, 0.08f, 0.85f);
+            var rowRt = rowGo.GetComponent<RectTransform>();
+            rowRt.anchorMin = new Vector2(0.04f, 1f); rowRt.anchorMax = new Vector2(0.96f, 1f);
+            rowRt.pivot     = new Vector2(0.5f, 1f);
+            rowRt.anchoredPosition = new Vector2(0f, rowY);
+            rowRt.sizeDelta = new Vector2(0f, 70f);
+
+            // 아이템 이름 + 설명
+            MakeText(rowGo.transform, "ItemLabel",
+                new Vector2(0f, 0f), new Vector2(0.60f, 1f),
+                new Vector2(12f, 4f), new Vector2(-4f, -4f),
+                18, new Color(0.8f, 1f, 0.8f), TextAnchor.MiddleLeft).text = labels[idx];
+
+            // 가격 표시 (층 레벨은 런타임에 업데이트)
+            var priceText = MakeText(rowGo.transform, "PriceLabel",
+                new Vector2(0.60f, 0f), new Vector2(0.78f, 1f),
+                Vector2.zero, Vector2.zero,
+                20, new Color(1f, 0.9f, 0.2f), TextAnchor.MiddleCenter);
+            priceText.name = $"ShopPrice{idx}";
+
+            // 구입 버튼
+            var btnGo = new GameObject("BuyBtn");
+            btnGo.transform.SetParent(rowGo.transform, false);
+            var btnImg = btnGo.AddComponent<Image>(); btnImg.color = new Color(0.15f, 0.55f, 0.25f, 0.95f);
+            var btnRt = btnGo.GetComponent<RectTransform>();
+            btnRt.anchorMin = new Vector2(0.78f, 0.12f); btnRt.anchorMax = new Vector2(0.97f, 0.88f);
+            btnRt.sizeDelta = Vector2.zero;
+            MakeText(btnGo.transform, "BuyLabel",
+                Vector2.zero, Vector2.one, new Vector2(4f,4f), new Vector2(-4f,-4f),
+                18, Color.white, TextAnchor.MiddleCenter).text = "구입";
+            var btn = btnGo.AddComponent<Button>();
+            int pidx = idx;
+            int bprc = basePrc[idx];
+            btn.onClick.AddListener(() => OnShopBuy(pidx, bprc, priceText));
+        }
+
+        _shopPanel.SetActive(false);
+    }
+
+    /// <summary>상점 구입 처리</summary>
+    private void OnShopBuy(int itemIdx, int basePrice, Text priceTextRef)
+    {
+        int price = basePrice + currentLevel * 5;
+        if (playerGold < price)
+        {
+            AddLog($"<color=#FF6666>골드 부족! (필요: {price} G, 소지: {playerGold} G)</color>");
+            return;
+        }
+        playerGold -= price;
+        switch (itemIdx)
+        {
+            case 0:
+                potionInventory++;
+                potionsPickedUp++;
+                AddLog($"<color=#55FF88>물약 구입! (+1개, 소지: {potionInventory}개)</color>");
+                UpdatePotionCountUI();
+                break;
+            case 1:
+                player.hp = Mathf.Min(player.maxHp, player.hp + 100);
+                AddLog("<color=#55FF88>고급 물약 사용! HP +100</color>");
+                break;
+            case 2:
+                potionInventory += 3;
+                potionsPickedUp += 3;
+                AddLog($"<color=#55FF88>물약 3개 구입! (소지: {potionInventory}개)</color>");
+                UpdatePotionCountUI();
+                break;
+        }
+        UpdateUI();
+        // 가격 텍스트 갱신 (구입 후 골드 표시 최신화)
+        RefreshShopPrices();
+    }
+
+    /// <summary>상점을 열고 가격을 현재 레벨에 맞게 갱신</summary>
+    private void ShowShopPanel()
+    {
+        if (_shopPanel == null) return;
+        RefreshShopPrices();
+        _shopPanel.SetActive(true);
+    }
+
+    private void RefreshShopPrices()
+    {
+        if (_shopPanel == null) return;
+        int[] basePrc = { 30, 80, 75 };
+        for (int i = 0; i < 3; i++)
+        {
+            var pt = _shopPanel.transform.Find($"ShopRow{i}/PriceLabel")?.GetComponent<Text>();
+            if (pt == null) pt = FindDeep<Text>(_shopPanel.transform, $"ShopPrice{i}");
+            if (pt != null)
+                pt.text = $"{basePrc[i] + currentLevel * 5} G";
+        }
+    }
+
+    private T FindDeep<T>(Transform root, string name) where T : Component
+    {
+        foreach (Transform child in root)
+        {
+            if (child.name == name) { var c = child.GetComponent<T>(); if (c != null) return c; }
+            var found = FindDeep<T>(child, name);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    // ====================================================================
+    // 보스룸 입/퇴장 감지 헬퍼 — 이동 전·후 어디서든 호출 가능
+    // ====================================================================
+    private void CheckBossRoomEntry(Vector2Int pos)
+    {
+        if (!_bossRoomRect.HasValue) return;
+        // 보스룸 or 복도 어느 쪽이든 진입 시 BGM/HUD 활성
+        bool nowInZone = _bossRoomRect.Value.Contains(pos)
+                      || (_bossCorridorRect.HasValue && _bossCorridorRect.Value.Contains(pos));
+        if (nowInZone && !_playerInBossRoom)
+        {
+            _playerInBossRoom = true;
+            EnemySlot bSlot = (_bossEntity != null && _bossEntity.typeIndex >= 0 && _bossEntity.typeIndex < enemySlots.Length)
+                ? enemySlots[_bossEntity.typeIndex] : null;
+            SwitchToBossBgm(bSlot);
+            if (_bossEntity != null) ShowBossHud(_bossEntity);
+            AddLog("<color=#FF4444>★ 보스가 나타났다!</color>");
+        }
+        else if (!nowInZone && _playerInBossRoom)
+        {
+            _playerInBossRoom = false;
+            RestoreNormalBgm();
+            HideBossHud();
+        }
+    }
+
+    // ====================================================================
+    // 보스 BGM 전환
+    // ====================================================================
+    private void SwitchToBossBgm(EnemySlot slot)
+    {
+        if (bgmSource == null) return;
+        // 슬롯 개별 BGM → bgmBossPool 랜덤 → bgmCombat 순으로 폴백
+        AudioClip bossBgm = null;
+        if (slot != null && slot.bossBattleBgm != null)
+            bossBgm = slot.bossBattleBgm;
+        else if (bgmBossPool != null && bgmBossPool.Length > 0)
+            bossBgm = bgmBossPool[Random.Range(0, bgmBossPool.Length)];
+        if (bossBgm == null || bossBgm == bgmSource.clip) return;
+        _preBossBgm = bgmSource.clip;
+        bgmSource.clip = bossBgm;
+        bgmSource.Play();
+    }
+
+    private void RestoreNormalBgm()
+    {
+        if (bgmSource == null) return;
+        AudioClip restore = _preBossBgm ?? bgmCombat;
+        _preBossBgm = null;  // 항상 초기화
+        if (restore == null)
+        {
+            bgmSource.Stop(); // 복원할 BGM 없으면 정지
+            return;
+        }
+        if (restore == bgmSource.clip)
+        {
+            if (!bgmSource.isPlaying) bgmSource.Play();
+            return;
+        }
+        bgmSource.clip = restore;
+        bgmSource.Play();
+    }
+
+    // ====================================================================
     private GameObject MakePanel(Transform parent,string name,
         Vector2 aMin,Vector2 aMax,Vector2 pivot,Vector2 aPos,Vector2 sd,Color bg)
     {
@@ -547,12 +995,57 @@ public class GameSceneManager : MonoBehaviour
     private void ApplyDungeonTheme()
     {
         var t = CurrentTheme;
-        if (t == null) return;
+
+        // ── 바닥 타일: 항상 tile.png 스프라이트시트에서 테마 인덱스로 선택 ─────
+        // (DungeonThemeConfig.floorSprite 무시 — tile.png 슬라이스를 직접 사용)
+        if (_cachedTileSprites == null || _cachedTileSprites.Length == 0)
+        {
+            _cachedTileSprites = Resources.LoadAll<Sprite>("tile");
+            // 알파벳순 → 숫자 순 정렬: tile_0 < tile_1 < tile_2 … < tile_10 …
+            if (_cachedTileSprites != null && _cachedTileSprites.Length > 1)
+            {
+                System.Array.Sort(_cachedTileSprites, (a, b) =>
+                {
+                    int ia = 0, ib = 0;
+                    int da = a.name.LastIndexOf('_'); if (da >= 0) int.TryParse(a.name.Substring(da + 1), out ia);
+                    int db = b.name.LastIndexOf('_'); if (db >= 0) int.TryParse(b.name.Substring(db + 1), out ib);
+                    return ia.CompareTo(ib);
+                });
+            }
+            // ── 검증 로그: 총 개수와 정렬 결과 앞 3개 확인 ──
+            Debug.Log($"[ApplyDungeonTheme] tile.png 로드: {_cachedTileSprites?.Length ?? 0}개 | " +
+                      $"정렬 후 앞3개: {(_cachedTileSprites?.Length > 0 ? _cachedTileSprites[0].name : "없음")}, " +
+                      $"{(_cachedTileSprites?.Length > 1 ? _cachedTileSprites[1].name : "")}, " +
+                      $"{(_cachedTileSprites?.Length > 2 ? _cachedTileSprites[2].name : "")}");
+        }
+        if (_cachedTileSprites != null && _cachedTileSprites.Length > 0)
+        {
+            int themeIdx = Mathf.Clamp((currentLevel - 1) / 3, 0, ThemeTileIndices.Length - 1);
+            int tileIdx  = ThemeTileIndices[themeIdx];
+            floorSprite  = tileIdx < _cachedTileSprites.Length ? _cachedTileSprites[tileIdx] : _cachedTileSprites[0];
+            Debug.Log($"[ApplyDungeonTheme] 층={currentLevel} themeIdx={themeIdx} tileIdx={tileIdx} → {floorSprite?.name ?? "null"}");
+        }
+        else
+        {
+            floorSprite = _origFloorSprite;
+            Debug.LogWarning("[ApplyDungeonTheme] tile.png 로드 실패 → 원본 스프라이트 폴백");
+        }
 
         // 타일 스프라이트 교체 (폴백은 EnsureSprites가 보장한 _orig* 스프라이트)
-        floorSprite  = t.floorSprite  != null ? t.floorSprite  : _origFloorSprite;
-        wallSprite   = t.wallSprite   != null ? t.wallSprite   : _origWallSprite;
-        stairsSprite = t.stairsSprite != null ? t.stairsSprite : _origStairsSprite;
+        wallSprite   = t?.wallSprite   != null ? t.wallSprite   : _origWallSprite;
+        stairsSprite = t?.stairsSprite != null ? t.stairsSprite : _origStairsSprite;
+
+        // ── 층 테마 색상 계산 (DungeonThemeConfig 없을 때 UpdateVisibility 폴백 색으로 사용) ──
+        {
+            int ti = Mathf.Clamp((currentLevel - 1) / 3, 0, ThemeFloorColors.Length - 1);
+            Color fc = ThemeFloorColors[ti];
+            _currentFloorVisColor = fc;
+            _currentFloorDimColor = Color.Lerp(fc, Color.black, 0.62f);
+            _currentWallVisColor  = Color.Lerp(fc, new Color(0.08f, 0.06f, 0.05f), 0.65f);
+            _currentWallDimColor  = Color.Lerp(fc, Color.black, 0.82f);
+        }
+
+        if (t == null) return;
 
         // 배경 갱신
         if (bgSpriteRenderer != null)
@@ -575,6 +1068,19 @@ public class GameSceneManager : MonoBehaviour
         GenerateDungeon();
         ApplyDungeonTheme();    // ← 층마다 스프라이트·색상 교체
         BuildTileObjects();
+        // ── 검증: 첫 바닥 타일의 sprite 이름 출력 ────────────────────────────
+        {
+            bool found = false;
+            for (int vx = 0; vx < MapWidth && !found; vx++)
+                for (int vy = 0; vy < MapHeight && !found; vy++)
+                    if (tileObjects[vx,vy] != null && map[vx,vy] == '.')
+                    {
+                        var sr = tileObjects[vx,vy].GetComponent<SpriteRenderer>();
+                        Debug.Log($"[BuildTileObjects] 첫 바닥 타일({vx},{vy}) sprite={sr?.sprite?.name ?? "null"}");
+                        found = true;
+                    }
+        }
+        SpawnBossRoomSpecials(); // ← 보스층: 문 + 상점 NPC 스폰
         SpawnEntities();
         SpawnItems();
         SpawnTreasureChests();  // ← 아이템 상자 스폰
@@ -583,6 +1089,8 @@ public class GameSceneManager : MonoBehaviour
         var tname = CurrentTheme?.themeName;
         string logEntry = $"<color=#88FF88>── {currentLevel}층 진입 ──</color>"
             + (string.IsNullOrEmpty(tname) ? "" : $"  <color=#AADDFF>[{tname}]</color>");
+        if (currentLevel % 3 == 0)
+            logEntry += "  <color=#FF5555>★ 보스층!</color>";
         AddLog(logEntry);
     }
 
@@ -601,6 +1109,20 @@ public class GameSceneManager : MonoBehaviour
         _chests.Clear();
         // 상자 선택 UI 닫기
         if (_chestChoicePanel != null) { Destroy(_chestChoicePanel); _chestChoicePanel = null; }
+        // 보스룸 / 포탈룸 상태 초기화
+        _bossRoomRect       = null;
+        _bossCorridorRect   = null;
+        _portalRoomRect     = null;
+        _bossEntity         = null;
+        _playerInBossRoom   = false;
+        _corridorDoorPassed = false;
+        _shopActive         = false;
+        HideBossHud();
+        RestoreNormalBgm();
+        if (_shopPanel != null) { _shopPanel.SetActive(false); }
+        // 문 / 상점 NPC 정리
+        if (_bossCorridorDoorGo != null) { Destroy(_bossCorridorDoorGo); _bossCorridorDoorGo = null; }
+        if (_bossShopNpcGo      != null) { Destroy(_bossShopNpcGo);      _bossShopNpcGo      = null; }
     }
 
     // ====================================================================
@@ -608,18 +1130,98 @@ public class GameSceneManager : MonoBehaviour
     // ====================================================================
     private void GenerateDungeon()
     {
+        const int MAX_ATTEMPTS = 15;
+        for (int genAttempt = 0; genAttempt < MAX_ATTEMPTS; genAttempt++)
+        {
+            TryGenerateDungeon();
+            if (IsAllRoomsConnected())
+            {
+                if (genAttempt > 0)
+                    Debug.Log($"[Dungeon] {genAttempt + 1}번째 시도에서 완전 연결 맵 생성 완료.");
+                return;
+            }
+            Debug.LogWarning($"[Dungeon] 연결성 검증 실패 (시도 {genAttempt + 1}/{MAX_ATTEMPTS}) — 재생성");
+        }
+        Debug.LogError("[Dungeon] 최대 재시도 초과. 현재 맵을 사용합니다.");
+    }
+
+    /// <summary>BFS로 첫 번째 방에서 모든 방(일반·포탈·보스)이 연결되어 있는지 확인한다.</summary>
+    private bool IsAllRoomsConnected()
+    {
+        if (rooms.Count == 0) return false;
+
+        var start = RoomCenter(rooms[0]);
+        if (GetT(start.x, start.y) != '.') return false;
+
+        var visited = new bool[MapWidth, MapHeight];
+        var queue   = new Queue<Vector2Int>();
+        queue.Enqueue(start);
+        visited[start.x, start.y] = true;
+
+        int[] dx = { 0, 0, 1, -1 };
+        int[] dy = { 1, -1, 0, 0 };
+        while (queue.Count > 0)
+        {
+            var cur = queue.Dequeue();
+            for (int d = 0; d < 4; d++)
+            {
+                int nx = cur.x + dx[d], ny = cur.y + dy[d];
+                if (!IB(nx, ny) || visited[nx, ny] || map[nx, ny] == '#') continue;
+                visited[nx, ny] = true;
+                queue.Enqueue(new Vector2Int(nx, ny));
+            }
+        }
+
+        // 모든 일반 방 중심이 도달 가능한지 확인
+        foreach (var r in rooms)
+        {
+            var c = RoomCenter(r);
+            if (!visited[c.x, c.y]) return false;
+        }
+        // 포탈룸 연결 확인
+        if (_portalRoomRect.HasValue)
+        {
+            var c = RoomCenter(_portalRoomRect.Value);
+            if (!visited[c.x, c.y]) return false;
+        }
+        // 보스룸 연결 확인
+        if (_bossRoomRect.HasValue)
+        {
+            var c = RoomCenter(_bossRoomRect.Value);
+            if (!visited[c.x, c.y]) return false;
+        }
+        return true;
+    }
+
+    private void TryGenerateDungeon()
+    {
+        // 이전 시도의 상태 완전 초기화
+        _bossRoomRect     = null;
+        _bossCorridorRect = null;
+        _portalRoomRect   = null;
+
         map=new char[MapWidth,MapHeight];
         explored=new bool[MapWidth,MapHeight];
         visible=new bool[MapWidth,MapHeight];
         rooms.Clear();
         for (int x=0;x<MapWidth;x++) for (int y=0;y<MapHeight;y++) map[x,y]='#';
 
+        // 보스층: 상단을 보스룸 예약 영역으로 확보 (일반 방 생성 상단 제한)
+        const int BOSS_ROOM_H_RSV  = 12;
+        const int BOSS_CORRIDOR_RSV = 8;
+        const int BOSS_MARGIN_RSV   = 3;
+        int normalRoomMaxY = (currentLevel % 3 == 0)
+            ? MapHeight - BOSS_MARGIN_RSV - BOSS_ROOM_H_RSV - BOSS_CORRIDOR_RSV - 4
+            : MapHeight - 1;
+        normalRoomMaxY = Mathf.Max(normalRoomMaxY, 16); // 최소 공간 보장
+
         int attempts=0;
         while (rooms.Count<12 && attempts<300)
         {
             attempts++;
             int w=Random.Range(5,10),h=Random.Range(4,8);
-            int x=Random.Range(1,MapWidth-w-1),y=Random.Range(1,MapHeight-h-1);
+            int x=Random.Range(1,MapWidth-w-1);
+            int y=Random.Range(1, Mathf.Max(2, normalRoomMaxY - h));
             var nr=new RectInt(x,y,w,h);
             bool ov=false;
             foreach (var r in rooms) if (Overlaps(nr,r)){ov=true;break;}
@@ -633,8 +1235,301 @@ public class GameSceneManager : MonoBehaviour
             var fb=new RectInt(5,5,8,6); rooms.Add(fb);
             for (int rx=5;rx<13;rx++) for (int ry=5;ry<11;ry++) map[rx,ry]='.';
         }
-        stairsPos=RoomCenter(rooms[rooms.Count-1]);
-        map[stairsPos.x,stairsPos.y]='>';
+
+        // 보스층: 전용 보스룸 + 복도 / 비보스층: 격리 포탈룸 + 복도
+        if (currentLevel % 3 == 0)
+        {
+            GenerateBossRoom();
+            // 보스층: 일반 방 재연결 (보스룸 SealRoomPerimeter가 복도 덮지 않도록
+            // 일반 방은 하단에 있으므로 안전; 연결 누락만 보완)
+            for (int i = 1; i < rooms.Count; i++)
+                ConnectRooms(rooms[i - 1], rooms[i]);
+        }
+        else
+        {
+            GeneratePortalRoom();
+            // 비보스층: SealRoomPerimeter가 일반 방 복도를 덮을 수 있으므로 재연결
+            for (int i = 1; i < rooms.Count; i++)
+                ConnectRooms(rooms[i - 1], rooms[i]);
+        }
+    }
+
+    // ====================================================================
+    // 보스룸 생성 — 항상 맵 최상단 중앙, 하단 수직 복도 하나만, 입구에 문+상점
+    // 구조: [보스룸 12×12] ← 최상단
+    //              ↑ 수직 복도 (8타일)
+    //        [문][상점] ← 복도 입구 (플레이어 진입 지점)
+    //              ↑ L자 복도
+    //       [던전 일반 방들]
+    // ====================================================================
+    private void GenerateBossRoom()
+    {
+        const int CORRIDOR_LEN = 8;   // 수직 복도 길이
+        const int BOSS_ROOM_W  = 12;
+        const int BOSS_ROOM_H  = 12;
+        const int MARGIN       = 3;
+
+        // ── 보스룸 위치: 항상 맵 최상단 중앙 ──────────────────────────────────
+        int bossX = (MapWidth  - BOSS_ROOM_W) / 2;
+        int bossY = MapHeight  - MARGIN - BOSS_ROOM_H;  // 상단 여백 3타일
+        var bossRoom = new RectInt(bossX, bossY, BOSS_ROOM_W, BOSS_ROOM_H);
+
+        // 보스룸 바닥 파기
+        for (int rx = bossRoom.xMin; rx < bossRoom.xMax; rx++)
+            for (int ry = bossRoom.yMin; ry < bossRoom.yMax; ry++)
+                map[rx, ry] = '.';
+        _bossRoomRect = bossRoom;
+
+        // 외곽 완전봉인 (4면 — 단일 복도만 허용)
+        SealRoomPerimeter(bossRoom);
+
+        // ── 하단 중앙 수직 복도 ────────────────────────────────────────────────
+        int corridorX      = bossRoom.xMin + BOSS_ROOM_W / 2;   // 방 중앙 X
+        int corridorTopY   = bossRoom.yMin - 1;                  // 보스룸 바닥 바로 아래
+        int corridorBotY   = corridorTopY  - (CORRIDOR_LEN - 1); // 복도 끝 (입구)
+        for (int ry = corridorBotY; ry <= corridorTopY; ry++)
+            if (IB(corridorX, ry)) map[corridorX, ry] = '.';
+
+        // 문: 복도 입구 최하단 (플레이어가 처음 진입하는 타일)
+        _corridorDoorPos = new Vector2Int(corridorX, corridorBotY);
+        // 상점: 문 바로 오른쪽
+        _shopNpcPos = new Vector2Int(corridorX + 1, corridorBotY);
+        if (IB(_shopNpcPos.x, _shopNpcPos.y)) map[_shopNpcPos.x, _shopNpcPos.y] = '.';
+        _shopActive = true;  // 이번 층 상점 활성 (보스 처치 후에도 유지)
+
+        // 복도 영역 저장: 입구(corridorBotY) ~ 보스룸 바닥 바로 아래(corridorTopY)
+        // 너비 3타일(corridorX-1 ~ corridorX+1)로 여유 있게 잡아 이동 중 감지 보장
+        _bossCorridorRect = new RectInt(corridorX - 1, corridorBotY, 3, corridorTopY - corridorBotY + 1);
+
+        // 계단: 보스룸 상단 반대편 코너 (입구와 가장 먼 위치)
+        stairsPos = new Vector2Int(bossRoom.xMax - 2, bossRoom.yMax - 2);
+        map[stairsPos.x, stairsPos.y] = '>';
+
+        // ── 복도 입구 → 가장 가까운 일반 방을 L자 복도로 연결 ────────────────
+        if (rooms.Count > 0)
+        {
+            // 맨해튼 거리 기준 가장 가까운 방 탐색
+            var nearestRoom = rooms[0];
+            float bestDist  = float.MaxValue;
+            foreach (var r in rooms)
+            {
+                var rc2 = RoomCenter(r);
+                float d = Mathf.Abs(rc2.x - corridorX) + Mathf.Abs(rc2.y - corridorBotY);
+                if (d < bestDist) { bestDist = d; nearestRoom = r; }
+            }
+            var rc = RoomCenter(nearestRoom);
+            // 수직: 복도 입구 ~ 방 중심 Y
+            int minRy = Mathf.Min(corridorBotY, rc.y);
+            int maxRy = Mathf.Max(corridorBotY, rc.y);
+            for (int ry = minRy; ry <= maxRy; ry++)
+                if (IB(corridorX, ry)) map[corridorX, ry] = '.';
+            // 수평: 복도 X ~ 방 중심 X (방 중심 Y행)
+            int minRx = Mathf.Min(corridorX, rc.x);
+            int maxRx = Mathf.Max(corridorX, rc.x);
+            for (int rx = minRx; rx <= maxRx; rx++)
+                if (IB(rx, rc.y)) map[rx, rc.y] = '.';
+        }
+    }
+
+    /// <summary>보스방 입구 반대편 코너를 계단 위치로 반환</summary>
+    private Vector2Int GetBossRoomFarCorner(RectInt room, Vector2Int corridorDir)
+    {
+        // 복도가 아래에서 오면(up) → 방 상단, 위에서 오면(down) → 방 하단
+        // 좌우도 반대
+        int cx = (corridorDir.x >= 0) ? room.xMax - 2 : room.xMin + 1;
+        int cy = (corridorDir.y >= 0) ? room.yMax - 2 : room.yMin + 1;
+        return new Vector2Int(cx, cy);
+    }
+
+    // ====================================================================
+    // 방 외곽 봉인 (1타일 테두리를 '#'으로 — 단일 복도 보장용)
+    // 호출 후 반드시 지정 복도를 재개척해야 합니다.
+    // ====================================================================
+    private void SealRoomPerimeter(RectInt room)
+    {
+        // 무조건 봉인 — 기존 복도(.)도 덮어써서 단일 복도를 완전히 보장
+        for (int x = room.xMin - 1; x <= room.xMax; x++)
+        {
+            if (IB(x, room.yMin - 1)) map[x, room.yMin - 1] = '#';
+            if (IB(x, room.yMax))     map[x, room.yMax]     = '#';
+        }
+        for (int y = room.yMin; y < room.yMax; y++)
+        {
+            if (IB(room.xMin - 1, y)) map[room.xMin - 1, y] = '#';
+            if (IB(room.xMax, y))     map[room.xMax, y]     = '#';
+        }
+    }
+
+    // ====================================================================
+    // 포탈룸 생성 (비보스층: 8×8 격리 방 + 1×6 복도 + 계단)
+    // GenerateDungeon에서 비보스층의 마지막 방 대신 호출
+    // ====================================================================
+    private void GeneratePortalRoom()
+    {
+        const int CORRIDOR_LEN   = 6;   // 복도 길이
+        const int PORTAL_ROOM_W  = 8;   // 포탈룸 너비
+        const int PORTAL_ROOM_H  = 8;   // 포탈룸 높이
+        const int MARGIN         = 3;   // 맵 가장자리 여백
+
+        Vector2Int[] dirs = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
+
+        // ── 1단계: 모든 방 × 4방향 탐색 (lastRoom 우선, 이후 역순) ──────────────
+        for (int ri = rooms.Count - 1; ri >= 0; ri--)
+        {
+            var anchorRoom = rooms[ri];
+            var fromCenter = RoomCenter(anchorRoom);
+
+            foreach (var d in dirs)
+            {
+                Vector2Int corridorStart;
+                if      (d == Vector2Int.right) corridorStart = new Vector2Int(anchorRoom.xMax,     fromCenter.y);
+                else if (d == Vector2Int.left)  corridorStart = new Vector2Int(anchorRoom.xMin - 1, fromCenter.y);
+                else if (d == Vector2Int.up)    corridorStart = new Vector2Int(fromCenter.x,         anchorRoom.yMax);
+                else                            corridorStart = new Vector2Int(fromCenter.x,         anchorRoom.yMin - 1);
+
+                // 복도 경계 검사 (맵 범위 및 기존 방 통과 여부)
+                bool corridorOk = true;
+                for (int k = 0; k < CORRIDOR_LEN; k++)
+                {
+                    var ct = corridorStart + d * k;
+                    if (!IB(ct.x, ct.y) || ct.x < MARGIN || ct.y < MARGIN ||
+                        ct.x >= MapWidth - MARGIN || ct.y >= MapHeight - MARGIN)
+                    { corridorOk = false; break; }
+                    foreach (var r in rooms)
+                        if (r.Contains(ct)) { corridorOk = false; break; }
+                    if (!corridorOk) break;
+                }
+                if (!corridorOk) continue;
+
+                Vector2Int portalEntry = corridorStart + d * CORRIDOR_LEN;
+                RectInt candidate;
+                if      (d == Vector2Int.right) candidate = new RectInt(portalEntry.x,                 portalEntry.y - PORTAL_ROOM_H / 2, PORTAL_ROOM_W, PORTAL_ROOM_H);
+                else if (d == Vector2Int.left)  candidate = new RectInt(portalEntry.x - PORTAL_ROOM_W, portalEntry.y - PORTAL_ROOM_H / 2, PORTAL_ROOM_W, PORTAL_ROOM_H);
+                else if (d == Vector2Int.up)    candidate = new RectInt(portalEntry.x - PORTAL_ROOM_W / 2, portalEntry.y,                PORTAL_ROOM_W, PORTAL_ROOM_H);
+                else                            candidate = new RectInt(portalEntry.x - PORTAL_ROOM_W / 2, portalEntry.y - PORTAL_ROOM_H, PORTAL_ROOM_W, PORTAL_ROOM_H);
+
+                if (candidate.xMin < MARGIN || candidate.yMin < MARGIN ||
+                    candidate.xMax >= MapWidth - MARGIN || candidate.yMax >= MapHeight - MARGIN) continue;
+
+                bool overlaps = false;
+                foreach (var r in rooms) if (Overlaps(candidate, r)) { overlaps = true; break; }
+                if (overlaps) continue;
+
+                // ── 검사 통과: 포탈룸 배치 ──────────────────────────────────
+                PlacePortalRoom(candidate, corridorStart, d, CORRIDOR_LEN);
+                return;
+            }
+        }
+
+        // ── 2단계: 전체 탐색 실패 → 맵 코너에 강제 배치 ────────────────────────
+        Debug.LogWarning("[PortalRoom] 모든 방 × 방향 탐색 실패. 맵 코너 강제 배치.");
+        ForcePortalRoomAtCorner(MARGIN, PORTAL_ROOM_W, PORTAL_ROOM_H);
+    }
+
+    /// <summary>포탈룸·복도·계단을 맵에 반영한다.</summary>
+    private void PlacePortalRoom(RectInt candidate, Vector2Int corridorStart, Vector2Int d, int corridorLen)
+    {
+        for (int rx = candidate.xMin; rx < candidate.xMax; rx++)
+            for (int ry = candidate.yMin; ry < candidate.yMax; ry++)
+                map[rx, ry] = '.';
+        _portalRoomRect = candidate;
+
+        // 외곽 봉인: 단일 복도 보장
+        SealRoomPerimeter(candidate);
+
+        // 복도 — 봉인 후 재개척
+        for (int k = 0; k < corridorLen; k++)
+        {
+            var ct = corridorStart + d * k;
+            if (IB(ct.x, ct.y)) map[ct.x, ct.y] = '.';
+        }
+
+        stairsPos = GetBossRoomFarCorner(candidate, d);
+        map[stairsPos.x, stairsPos.y] = '>';
+    }
+
+    /// <summary>포탈룸 공간 부족 폴백: 맵 코너 중 lastRoom에서 가장 먼 곳에 강제 배치</summary>
+    private void ForcePortalRoomAtCorner(int margin, int w, int h)
+    {
+        var corners = new[]
+        {
+            new RectInt(margin,                margin,                  w, h),  // 좌하
+            new RectInt(MapWidth - margin - w, margin,                  w, h),  // 우하
+            new RectInt(margin,                MapHeight - margin - h,  w, h),  // 좌상
+            new RectInt(MapWidth - margin - w, MapHeight - margin - h,  w, h),  // 우상
+        };
+
+        // 마지막 방과 가장 먼 코너 선택 (가장 고립된 위치)
+        var lastCenter = RoomCenter(rooms[rooms.Count - 1]);
+        RectInt chosen = corners[0];
+        float worst = 0f;
+        foreach (var c in corners)
+        {
+            float dist = Vector2Int.Distance(RoomCenter(c), lastCenter);
+            if (dist > worst) { worst = dist; chosen = c; }
+        }
+
+        for (int rx = chosen.xMin; rx < chosen.xMax; rx++)
+            for (int ry = chosen.yMin; ry < chosen.yMax; ry++)
+                map[rx, ry] = '.';
+        _portalRoomRect = chosen;
+        SealRoomPerimeter(chosen);
+
+        // L자 복도로 마지막 방과 연결
+        var lc = lastCenter;
+        var bc = RoomCenter(chosen);
+        for (int x = Mathf.Min(lc.x, bc.x); x <= Mathf.Max(lc.x, bc.x); x++)
+            if (IB(x, lc.y)) map[x, lc.y] = '.';
+        for (int y = Mathf.Min(lc.y, bc.y); y <= Mathf.Max(lc.y, bc.y); y++)
+            if (IB(bc.x, y)) map[bc.x, y] = '.';
+
+        stairsPos = RoomCenter(chosen);
+        map[stairsPos.x, stairsPos.y] = '>';
+    }
+
+    // ====================================================================
+    // 보스룸 특수 오브젝트 스폰 (문 + 상점 NPC)
+    // GenerateDungeon → BuildTileObjects 이후에 호출
+    // ====================================================================
+    private void SpawnBossRoomSpecials()
+    {
+        if (!_bossRoomRect.HasValue) return;
+
+        // ── 문 (복도 입구 타일 위에 오버레이 — 1타일 크기에 맞춤) ──────────────
+        if (IB(_corridorDoorPos.x, _corridorDoorPos.y))
+        {
+            _bossCorridorDoorGo = new GameObject("BossDoor");
+            _bossCorridorDoorGo.transform.position = TileWorldPos(_corridorDoorPos.x, _corridorDoorPos.y);
+            var doorSr = _bossCorridorDoorGo.AddComponent<SpriteRenderer>();
+            Sprite doorSpr = doorSprite != null ? doorSprite : MakeSolid(new Color(0.85f, 0.62f, 0.10f));
+            doorSr.sprite       = doorSpr;
+            doorSr.color        = doorSprite != null ? Color.white : new Color(0.85f, 0.62f, 0.10f, 0.88f);
+            doorSr.sortingOrder = 3;
+            // 스프라이트 bounds 기반으로 정확히 1타일(TileSize)에 맞게 스케일
+            float dsx = TileSize / doorSpr.bounds.size.x;
+            float dsy = TileSize / doorSpr.bounds.size.y;
+            _bossCorridorDoorGo.transform.localScale = new Vector3(dsx * 0.92f, dsy * 0.92f, 1f);
+            _bossCorridorDoorGo.SetActive(false);
+        }
+
+        // ── 상점 (문 옆 타일에 1타일 크기에 맞춤) ─────────────────────────────
+        if (IB(_shopNpcPos.x, _shopNpcPos.y))
+        {
+            _bossShopNpcGo = new GameObject("ShopNpc");
+            _bossShopNpcGo.transform.position = TileWorldPos(_shopNpcPos.x, _shopNpcPos.y);
+            var shopSr = _bossShopNpcGo.AddComponent<SpriteRenderer>();
+            Sprite shopSpr = (shopNpcSprites != null && shopNpcSprites.Length > 0)
+                ? shopNpcSprites[Random.Range(0, shopNpcSprites.Length)]
+                : MakeSolid(new Color(0.20f, 0.82f, 0.38f));
+            shopSr.sprite       = shopSpr;
+            shopSr.color        = Color.white;
+            shopSr.sortingOrder = 4;
+            // 스프라이트 bounds 기반으로 정확히 1타일(TileSize)에 맞게 스케일
+            float ssx = TileSize / shopSpr.bounds.size.x;
+            float ssy = TileSize / shopSpr.bounds.size.y;
+            _bossShopNpcGo.transform.localScale = new Vector3(ssx * 0.90f, ssy * 0.90f, 1f);
+            _bossShopNpcGo.SetActive(false);
+        }
     }
 
     private bool Overlaps(RectInt a,RectInt b)
@@ -664,13 +1559,12 @@ public class GameSceneManager : MonoBehaviour
             {
                 char c=map[x,y];
                 Sprite spr=(c=='#')?wallSprite:floorSprite;
-                Color col=(c=='#')?new Color(0.32f,0.27f,0.22f):new Color(0.60f,0.52f,0.40f);
-                tileObjects[x,y]=MakeTile($"T_{x}_{y}",x,y,spr,col,0);
+                tileObjects[x,y]=MakeTile($"T_{x}_{y}",x,y,spr,Color.white,0);
             }
         }
-        // 계단: Pentagram_Activated (보라색 마법진 느낌)
+        // 계단: 틴트 없이 원본 스프라이트 그대로 표시
         stairsObject=MakeTile("Stairs",stairsPos.x,stairsPos.y,
-            stairsSprite,new Color(0.9f,0.5f,1.0f),2);
+            stairsSprite,Color.white,2);
 
         for (int x=0;x<MapWidth;x++) for (int y=0;y<MapHeight;y++)
             if (tileObjects[x,y]!=null) tileObjects[x,y].SetActive(false);
@@ -715,7 +1609,7 @@ public class GameSceneManager : MonoBehaviour
         playerObject.transform.position=TileWorldPos(player.pos.x,player.pos.y);
         playerObject.GetComponent<SpriteRenderer>().sortingOrder = EntitySortOrder(player.pos.y) + 1;
         // 스프라이트를 타일 크기에 맞게 정규화 (ppu 차이로 인한 시각적 겹침 방지)
-        var refSprite = (playerIdleSprites!=null&&playerIdleSprites.Length>0) ? playerIdleSprites[0] : playerSprite;
+        var refSprite = playerSpriteDown != null ? playerSpriteDown : playerSprite;
         if (refSprite!=null)
         {
             float ps=TileSize/Mathf.Max(refSprite.bounds.size.x,refSprite.bounds.size.y);
@@ -723,41 +1617,87 @@ public class GameSceneManager : MonoBehaviour
         }
         playerObject.SetActive(true);
 
-        // 몬스터 종류별 파라미터
-        var monsterDefs = new (string name, int hp, int atk, int exp, MonsterType type, Sprite spr, Color col)[]
-        {
-            ("고블린",  15+currentLevel*8,  3+currentLevel,   5+currentLevel,   MonsterType.Goblin,   enemy1Sprite, new Color(0.5f,1.0f,0.5f)),
-            ("오크",    30+currentLevel*15, 6+currentLevel*2, 12+currentLevel*2, MonsterType.Orc,      enemy2Sprite, new Color(1.0f,0.6f,0.2f)),
-            ("화염마",  20+currentLevel*12, 8+currentLevel*2, 20+currentLevel*3, MonsterType.FireDemon,enemy3Sprite, new Color(1.0f,0.3f,0.1f)),
-        };
-
+        // 에너미 슬롯 기반 스폰 (일반/보스 분리)
+        int slotCount    = (enemySlots != null) ? enemySlots.Length : 0;
         int totalEnemies = 4 + currentLevel * 2;
-        for (int i=0;i<totalEnemies;i++)
-        {
-            // 층이 낮을수록 고블린 위주, 높을수록 다양
-            int typeIdx;
-            float roll = Random.value;
-            if      (roll < 0.50f) typeIdx = 0; // 고블린 50%
-            else if (roll < 0.80f) typeIdx = 1; // 오크   30%
-            else                   typeIdx = 2; // 화염마 20%
+        bool isBossFloor = currentLevel % 3 == 0;
 
-            var def = monsterDefs[typeIdx];
-            var e   = new Entity(def.name,def.hp,def.atk,def.exp,def.type);
-            e.pos   = FindEmptyFloor(6); // 플레이어로부터 6칸 이상 떨어진 빈 칸
+        // 슬롯을 보스 / 일반 풀로 분리
+        var bossPool   = new System.Collections.Generic.List<int>();
+        var normalPool = new System.Collections.Generic.List<int>();
+        for (int s = 0; s < slotCount; s++)
+            (enemySlots[s].isBoss ? bossPool : normalPool).Add(s);
+        if (normalPool.Count == 0) normalPool.AddRange(bossPool); // 일반 없으면 보스로 대체
+        if (bossPool.Count == 0) isBossFloor = false;            // 보스 없으면 보스층 없음
+
+        int bossSpawned = 0;
+        for (int i = 0; i < totalEnemies; i++)
+        {
+            // 보스층 첫 번째 엔티티는 반드시 보스
+            int typeIdx;
+            if (isBossFloor && bossSpawned == 0 && bossPool.Count > 0)
+            {
+                typeIdx = bossPool[Random.Range(0, bossPool.Count)];
+                bossSpawned++;
+            }
+            else
+                typeIdx = normalPool.Count > 0 ? normalPool[Random.Range(0, normalPool.Count)] : (slotCount > 0 ? Random.Range(0, slotCount) : -1);
+
+            string eName; string eDesc; bool eIsBoss;
+            int eHp, eAtk, eExp;
+            Sprite eSprRight, eSprLeft; Color eColor;
+
+            if (typeIdx >= 0)
+            {
+                var slot  = enemySlots[typeIdx];
+                eName     = string.IsNullOrEmpty(slot.name) ? $"몬스터{typeIdx+1}" : slot.name;
+                eDesc     = slot.description ?? "";
+                eIsBoss   = slot.isBoss;
+                eHp       = Mathf.RoundToInt((15 + currentLevel * 8)  * slot.hpScale);
+                eAtk      = Mathf.RoundToInt((3  + currentLevel)      * slot.atkScale);
+                eExp      = Mathf.RoundToInt((5  + currentLevel)      * slot.expScale);
+                eSprRight = slot.spriteRight;
+                eSprLeft  = slot.spriteLeft;
+                eColor    = slot.color;
+            }
+            else
+            {
+                eName = "몬스터"; eDesc = ""; eIsBoss = false;
+                eHp   = 15 + currentLevel * 8;
+                eAtk  = 3  + currentLevel; eExp = 5 + currentLevel;
+                eSprRight = null; eSprLeft = null;
+                eColor    = new Color(1f, 0.4f, 0.4f);
+            }
+
+            var e = new Entity(eName, eHp, eAtk, eExp, typeIdx);
+            e.description = eDesc;
+            e.isBoss      = eIsBoss;
+            // 보스는 보스방 중앙에, 일반 몬스터는 랜덤 빈 바닥에 배치
+            if (eIsBoss && _bossRoomRect.HasValue)
+                e.pos = RoomCenter(_bossRoomRect.Value);
+            else
+                e.pos = FindEmptyFloor(6);
+            e.spriteRight = eSprRight;
+            e.spriteLeft  = eSprLeft;
+            e.facingRight = true;
             if (e.pos.x < 0) continue;
 
-            var eGo = new GameObject($"Enemy_{i}_{def.name}");
-            eGo.transform.position=TileWorldPos(e.pos.x,e.pos.y);
-            var esr=eGo.AddComponent<SpriteRenderer>();
-            esr.sprite=def.spr; esr.color=def.col; esr.sortingOrder=EntitySortOrder(e.pos.y);
-            // 스프라이트를 타일 크기에 맞게 정규화 (시각적 겹침 방지)
-            if (def.spr!=null)
+            var eSprRef = eSprRight ?? eSprLeft;
+            var eGo = new GameObject($"Enemy_{i}_{eName}");
+            eGo.transform.position = TileWorldPos(e.pos.x, e.pos.y);
+            var esr = eGo.AddComponent<SpriteRenderer>();
+            esr.sprite = eSprRef; esr.color = Color.white;
+            esr.sortingOrder = EntitySortOrder(e.pos.y);
+            if (eSprRef != null)
             {
-                float es=TileSize/Mathf.Max(def.spr.bounds.size.x,def.spr.bounds.size.y);
-                eGo.transform.localScale=new Vector3(es,es,1f);
+                float es = TileSize / Mathf.Max(eSprRef.bounds.size.x, eSprRef.bounds.size.y);
+                if (eIsBoss) es *= 1.7f;
+                eGo.transform.localScale = new Vector3(es, es, 1f);
             }
             eGo.SetActive(false);
-            e.go=eGo; enemies.Add(e); enemyObjects.Add(eGo);
+            e.go = eGo; enemies.Add(e); enemyObjects.Add(eGo);
+            // 보스 엔티티 캐싱 (HUD·BGM 전환에 사용)
+            if (eIsBoss && _bossEntity == null) _bossEntity = e;
         }
     }
 
@@ -776,25 +1716,22 @@ public class GameSceneManager : MonoBehaviour
                 if (pos.x<0) continue;
 
                 float roll=Random.value;
-                ItemType itype; Sprite spr; int val; Color col;
+                ItemType itype; Sprite spr; int val;
                 if (roll<0.40f)
                 {
-                    itype=ItemType.Potion;   spr=potionSprite; val=25+currentLevel*5;
-                    col=new Color(0.3f,1f,0.4f);
+                    itype=ItemType.Potion;    spr=potionSprite; val=25+currentLevel*5;
                 }
                 else if (roll<0.75f)
                 {
                     itype=ItemType.GoldSmall; spr=goldSmSprite; val=5+currentLevel*3;
-                    col=new Color(1f,0.95f,0.3f);
                 }
                 else
                 {
                     itype=ItemType.GoldLarge; spr=goldLgSprite; val=15+currentLevel*8;
-                    col=new Color(0.95f,0.7f,0.1f);
                 }
 
                 var item=new Item{type=itype,pos=pos,value=val};
-                var iGo=MakeTile($"Item_{ri}_{j}",pos.x,pos.y,spr,col,3);
+                var iGo=MakeTile($"Item_{ri}_{j}",pos.x,pos.y,spr,Color.white,3);
                 // 종횡비 유지하며 타일의 82% 크기로 표시
                 if (spr != null)
                 {
@@ -834,6 +1771,9 @@ public class GameSceneManager : MonoBehaviour
             if (player!=null&&player.pos==p) continue;
             if (minDistFromPlayer>0&&player!=null&&
                 Vector2Int.Distance(p,player.pos)<=minDistFromPlayer) continue;
+            // 보스룸 / 포탈룸 내부에는 일반 엔티티 배치 금지
+            if (_bossRoomRect.HasValue   && _bossRoomRect.Value.Contains(p))   continue;
+            if (_portalRoomRect.HasValue && _portalRoomRect.Value.Contains(p)) continue;
             return p;
         }
         return new Vector2Int(-1,-1);
@@ -850,9 +1790,10 @@ public class GameSceneManager : MonoBehaviour
     private void HandleInput()
     {
         // 패널이 열린 동안은 이동/전투 차단
-        bool panelOpen = (_inventoryPanel != null && _inventoryPanel.activeSelf)
-                      || (_equipmentPanel != null && _equipmentPanel.activeSelf)
-                      || (_chestChoicePanel != null && _chestChoicePanel.activeSelf);
+        bool panelOpen = (_inventoryPanel  != null && _inventoryPanel.activeSelf)
+                      || (_equipmentPanel  != null && _equipmentPanel.activeSelf)
+                      || (_chestChoicePanel != null && _chestChoicePanel.activeSelf)
+                      || (_shopPanel       != null && _shopPanel.activeSelf);
         if (panelOpen) return;
 
         // 물약 사용 (1 키)
@@ -880,6 +1821,9 @@ public class GameSceneManager : MonoBehaviour
     // ====================================================================
     private bool ProcessPlayerTurn(Vector2Int move)
     {
+        // ── 보스룸 입/퇴장 판정 (이동·공격 전 현재 위치 기준으로 먼저 체크) ────
+        CheckBossRoomEntry(player.pos);
+
         // 같은 칸에 적이 있으면 즉시 밀어내기 (비정상 겹침 복구)
         var sameTile=GetEnemyAt(player.pos.x,player.pos.y);
         if (sameTile!=null)
@@ -912,15 +1856,33 @@ public class GameSceneManager : MonoBehaviour
             target.hp-=dmg;
             PlaySFX(sfxHit, Random.Range(0.9f,1.1f));
             AddLog($"<color=#FFCC44>{target.name}에게 <b>{dmg}</b> 데미지!</color>");
+            // 보스 HUD 체력바 즉시 갱신
+            if (target.isBoss && target.hp > 0) UpdateBossHud(target);
             if (target.hp<=0)
             {
                 playerExp+=target.exp;
-                AddLog($"<color=#88FF88>{target.name} 처치! +{target.exp} EXP</color>");
-                PlaySFX(sfxEnemyHit);
+                if (target.isBoss)
+                {
+                    AddLog($"<color=#FFD700>★ 보스 {target.name} 처치! +{target.exp} EXP</color>");
+                    GameManager.Instance?.Player?.AddKarmaOnBossKill();
+                    HideBossHud();
+                    RestoreNormalBgm();
+                    _bossRoomRect     = null;  // 보스 처치 후 보스룸 감지 비활성화 (BGM 재호출 방지)
+                    _playerInBossRoom = false;
+                    if (_bossEntity == target) _bossEntity = null;
+                }
+                else
+                {
+                    AddLog($"<color=#88FF88>{target.name} 처치! +{target.exp} EXP</color>");
+                    GameManager.Instance?.Player?.AddKarmaOnNormalKill();
+                }
+                // 사망 사운드: sfxDeathPool에서 랜덤, 없으면 sfxEnemyHit 폴백
+                if (sfxDeathPool != null && sfxDeathPool.Length > 0)
+                    PlaySFX(sfxDeathPool[Random.Range(0, sfxDeathPool.Length)], Random.Range(0.9f, 1.1f));
+                else
+                    PlaySFX(sfxEnemyHit);
                 // 처치 통계 기록
-                if      (target.type==MonsterType.Goblin)   killsGoblin++;
-                else if (target.type==MonsterType.Orc)      killsOrc++;
-                else                                        killsFireDemon++;
+                _totalKills++;
                 GameManager.Instance?.History?.RecordMonsterKill(target.name);
                 if (target.go!=null) Destroy(target.go);
                 enemyObjects.Remove(target.go); enemies.Remove(target);
@@ -936,9 +1898,28 @@ public class GameSceneManager : MonoBehaviour
             playerObject.transform.position=TileWorldPos(player.pos.x,player.pos.y);
             playerObject.GetComponent<SpriteRenderer>().sortingOrder = EntitySortOrder(player.pos.y) + 1;
 
+            // 보스룸 입/퇴장 감지 (이동 후 새 위치 기준)
+            CheckBossRoomEntry(player.pos);
+            // 보스 복도 문 첫 통과 시 도어 사운드
+            if (!_corridorDoorPassed && player.pos == _corridorDoorPos)
+            {
+                _corridorDoorPassed = true;
+                PlaySFX(sfxLootboxOpen);
+            }
+            // 보스 HUD HP 실시간 갱신
+            if (_bossEntity != null && _playerInBossRoom) UpdateBossHud(_bossEntity);
+
             // 아이템 획득
             var it=GetItemAt(np.x,np.y);
             if (it!=null) PickupItem(it);
+
+            // 상점 NPC 상호작용 (보스층 복도 입구 옆 상점)
+            if (_shopActive && np == _shopNpcPos)
+            {
+                ShowShopPanel();
+                AddLog("<color=#55FF99>상점 주인: 어서오세요! (ESC 또는 ✕로 닫기)</color>");
+                return true;
+            }
 
             // 아이템 상자 충돌 체크
             var chest = GetChestAt(np.x, np.y);
@@ -1046,26 +2027,50 @@ public class GameSceneManager : MonoBehaviour
             if (np==player.pos)
             {
                 int dmg=Mathf.Max(1,e.attack+Random.Range(-2,3)-_equipDef);
-                // 화염마는 추가 데미지
-                if (e.type==MonsterType.FireDemon) dmg=Mathf.RoundToInt(dmg*1.3f);
                 player.hp-=dmg;
                 PlaySFX(sfxHit, 0.7f);
                 string defInfo = _equipDef > 0 ? $" (방어 -{_equipDef})" : "";
                 AddLog($"<color=#FF6666>{e.name}에게 <b>{dmg}</b> 데미지를 받았다{defInfo}!</color>");
             }
-            else if (GetT(np.x,np.y)!='#'&&!IsEntityAt(np))
+            else if (GetT(np.x,np.y)!='#' && !IsEntityAt(np) &&
+                     !(e.isBoss && _bossRoomRect.HasValue && !_bossRoomRect.Value.Contains(np)))
             {
                 e.pos=np;
                 if (e.go!=null)
                 {
                     e.go.transform.position=TileWorldPos(e.pos.x,e.pos.y);
-                    e.go.GetComponent<SpriteRenderer>().sortingOrder = EntitySortOrder(e.pos.y);
+                    var esr = e.go.GetComponent<SpriteRenderer>();
+                    esr.sortingOrder = EntitySortOrder(e.pos.y);
+                    // 좌우 이동 시 스프라이트 방향 전환
+                    if (mv.x != 0)
+                    {
+                        e.facingRight = mv.x > 0;
+                        UpdateEnemyFacing(e, esr);
+                    }
                 }
             }
         }
         if (player.hp<=0)
         {
             ShowDeathPanel();
+        }
+    }
+
+    // ====================================================================
+    // 적 스프라이트 방향 전환
+    // spriteLeft 설정 시 실제 스프라이트 교체, 미설정 시 flipX 사용.
+    // ====================================================================
+    private void UpdateEnemyFacing(Entity e, SpriteRenderer sr)
+    {
+        if (e.spriteLeft != null)
+        {
+            sr.sprite = e.facingRight ? e.spriteRight : e.spriteLeft;
+            sr.flipX  = false;
+        }
+        else
+        {
+            // 왼쪽 스프라이트 미설정: 오른쪽 스프라이트를 flipX로 사용
+            sr.flipX = !e.facingRight;
         }
     }
 
@@ -1078,12 +2083,13 @@ public class GameSceneManager : MonoBehaviour
         if (playerAnimCoroutine != null) StopCoroutine(playerAnimCoroutine);
         PlaySFX(sfxGameOver);
         AddLog("<color=#FF4444>사망하였습니다...</color>");
+        HideBossHud();
 
-        // 게임 이력 저장
-        GameManager.Instance?.History?.RecordDeath();
+        // 사망 처리는 GameManager.OnPlayerDeath()에서 일괄 수행
+        // (History.RecordDeath, 카르마 기반 각인 해금, 씬 전환 포함)
 
         var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas==null) { SceneManager.LoadScene("GameOptionsScene"); return; }
+        if (canvas==null) { GameManager.Instance?.OnPlayerDeath(); return; }
 
         // 전체화면 반투명 오버레이
         var overlay = MakePanel(canvas.transform,"DeathOverlay",
@@ -1101,11 +2107,7 @@ public class GameSceneManager : MonoBehaviour
         var deathAnimImg = deathAnimGo.AddComponent<Image>();
         deathAnimImg.preserveAspect = true;
         deathAnimImg.color = Color.white;
-        var downedFrames = GetPlayerDownedFrames();
-        if (downedFrames != null && downedFrames.Length > 0 && downedFrames[0] != null)
-            deathAnimImg.sprite = downedFrames[0];
-        else if (playerSprite != null)
-            deathAnimImg.sprite = playerSprite;
+        deathAnimImg.sprite = GetPlayerDownedSprite();
         var deathAnimRt = deathAnimGo.GetComponent<RectTransform>();
         deathAnimRt.anchorMin = new Vector2(0.5f, 1f);
         deathAnimRt.anchorMax = new Vector2(0.5f, 1f);
@@ -1127,13 +2129,9 @@ public class GameSceneManager : MonoBehaviour
             new Vector2(0,-148),new Vector2(-40,2),new Color(0.6f,0.15f,0.15f,1f));
 
         // ── 통계 (top-anchored, 상단 156px ~ 하단 94px) ──
-        int totalKills = killsGoblin+killsOrc+killsFireDemon;
         string statsText =
             $"<color=#FFD966>도달한 층    :  {currentLevel}층</color>\n\n" +
-            $"<color=#FF9090>쓰러뜨린 적  :  {totalKills}마리</color>\n" +
-            $"    고블린  {killsGoblin}마리\n" +
-            $"    오크    {killsOrc}마리\n" +
-            $"    화염마  {killsFireDemon}마리\n\n" +
+            $"<color=#FF9090>쓰러뜨린 적  :  {_totalKills}마리</color>\n\n" +
             $"<color=#88FF88>회복약 사용  :  {potionsPickedUp}개</color>\n\n" +
             $"<color=#FFD700>획득 골드    :  {playerGold} G</color>";
 
@@ -1159,7 +2157,7 @@ public class GameSceneManager : MonoBehaviour
         cb.highlightedColor = new Color(0.75f,0.18f,0.18f,1f);
         cb.pressedColor     = new Color(0.35f,0.05f,0.05f,1f);
         btn.colors = cb;
-        btn.onClick.AddListener(()=>SceneManager.LoadScene("GameOptionsScene"));
+        btn.onClick.AddListener(()=>GameManager.Instance?.OnPlayerDeath());
         MakeText(btnGo.transform,"BtnText",
             Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero,
             34,Color.white,TextAnchor.MiddleCenter).text = "확인";
@@ -1189,6 +2187,18 @@ public class GameSceneManager : MonoBehaviour
                 for (int x=room.xMin;x<room.xMax;x++)
                     for (int y=room.yMin;y<room.yMax;y++) SetVis(x,y);
 
+        // 보스방에 있을 때 보스방 전체 공개
+        if (_bossRoomRect.HasValue && _bossRoomRect.Value.Contains(player.pos))
+            for (int x = _bossRoomRect.Value.xMin; x < _bossRoomRect.Value.xMax; x++)
+                for (int y = _bossRoomRect.Value.yMin; y < _bossRoomRect.Value.yMax; y++)
+                    SetVis(x, y);
+
+        // 포탈룸에 있을 때 포탈룸 전체 공개
+        if (_portalRoomRect.HasValue && _portalRoomRect.Value.Contains(player.pos))
+            for (int x = _portalRoomRect.Value.xMin; x < _portalRoomRect.Value.xMax; x++)
+                for (int y = _portalRoomRect.Value.yMin; y < _portalRoomRect.Value.yMax; y++)
+                    SetVis(x, y);
+
         var visTheme = CurrentTheme; // 루프 안에서 매번 조회하지 않도록 캐시
         for (int x=0;x<MapWidth;x++)
         {
@@ -1200,16 +2210,12 @@ public class GameSceneManager : MonoBehaviour
                 else if (visible[x,y])
                 {
                     tileObjects[x,y].SetActive(true);
-                    sr.color = map[x,y]=='#'
-                        ? (visTheme != null ? visTheme.wallVisibleColor  : new Color(0.55f,0.46f,0.36f))
-                        : (visTheme != null ? visTheme.floorVisibleColor : new Color(0.80f,0.70f,0.55f));
+                    sr.color = Color.white;
                 }
                 else
                 {
                     tileObjects[x,y].SetActive(true);
-                    sr.color = map[x,y]=='#'
-                        ? (visTheme != null ? visTheme.wallDimColor  : new Color(0.18f,0.15f,0.12f))
-                        : (visTheme != null ? visTheme.floorDimColor : new Color(0.30f,0.26f,0.20f));
+                    sr.color = new Color(0.35f, 0.35f, 0.35f); // 탐색됐지만 시야 밖: 무채색 어둠
                 }
             }
         }
@@ -1220,9 +2226,7 @@ public class GameSceneManager : MonoBehaviour
         if (sv)
         {
             var ssr=stairsObject.GetComponent<SpriteRenderer>();
-            Color stairsVis = visTheme != null ? visTheme.stairsColor : new Color(0.9f,0.5f,1.0f);
-            Color stairsDim = visTheme != null ? Color.Lerp(visTheme.stairsColor, Color.black, 0.55f) : new Color(0.4f,0.2f,0.5f);
-            ssr.color = IsVis(stairsPos.x,stairsPos.y) ? stairsVis : stairsDim;
+            ssr.color = IsVis(stairsPos.x, stairsPos.y) ? Color.white : new Color(0.35f, 0.35f, 0.35f);
         }
 
         // 적
@@ -1236,6 +2240,20 @@ public class GameSceneManager : MonoBehaviour
         foreach (var chest in _chests)
             if (chest.go != null)
                 chest.go.SetActive(IsVis(chest.pos.x, chest.pos.y) || explored[chest.pos.x, chest.pos.y]);
+
+        // 보스룸 문 & 상점 NPC 가시성
+        if (_bossCorridorDoorGo != null)
+        {
+            bool dv = IB(_corridorDoorPos.x, _corridorDoorPos.y) &&
+                      explored[_corridorDoorPos.x, _corridorDoorPos.y];
+            _bossCorridorDoorGo.SetActive(dv);
+        }
+        if (_bossShopNpcGo != null)
+        {
+            bool sv2 = IB(_shopNpcPos.x, _shopNpcPos.y) &&
+                       explored[_shopNpcPos.x, _shopNpcPos.y];
+            _bossShopNpcGo.SetActive(sv2);
+        }
     }
 
     private void SetVis(int x,int y){if(IB(x,y)){visible[x,y]=true;explored[x,y]=true;}}
@@ -1273,87 +2291,57 @@ public class GameSceneManager : MonoBehaviour
     private Item   GetItemAt(int x,int y)  => items.Find(i=>i.pos.x==x&&i.pos.y==y);
 
     // ====================================================================
-    // 플레이어 애니메이션
+    // 플레이어 애니메이션 (방향당 1장 스프라이트)
     // ====================================================================
-    private Sprite[] GetPlayerFrames(PlayerFacing facing)
+    private Sprite GetPlayerDirectionSprite(PlayerFacing facing)
     {
-        Sprite[] arr = facing == PlayerFacing.Up    ? playerWalkUpSprites    :
-                       facing == PlayerFacing.Left  ? playerWalkLeftSprites  :
-                       facing == PlayerFacing.Right ? playerWalkRightSprites :
-                       (playerWalkDownSprites != null && playerWalkDownSprites.Length > 0
-                           ? playerWalkDownSprites : playerIdleSprites);
-        return (arr != null && arr.Length > 0) ? arr : null;
+        return facing == PlayerFacing.Up    ? (playerSpriteUp     ?? playerSprite) :
+               facing == PlayerFacing.Left  ? (playerSpriteLeft   ?? playerSprite) :
+               facing == PlayerFacing.Right ? (playerSpriteRight  ?? playerSprite) :
+                                              (playerSpriteDown   ?? playerSprite);
     }
 
-    private Sprite[] GetPlayerDownedFrames()
-    {
-        return (playerDownedSprites != null && playerDownedSprites.Length > 0)
-            ? playerDownedSprites : null;
-    }
+    private Sprite GetPlayerDownedSprite()
+        => playerSpriteDowned != null ? playerSpriteDowned : playerSprite;
 
     private void SetPlayerIdleSprite()
     {
         if (playerObject == null) return;
         var sr = playerObject.GetComponent<SpriteRenderer>();
         if (sr == null) return;
-        var frames = GetPlayerFrames(playerFacing);
-        sr.sprite = (frames != null && frames[0] != null) ? frames[0] : playerSprite;
+        sr.sprite = GetPlayerDirectionSprite(playerFacing);
     }
 
     private void TriggerPlayerWalkAnim(Vector2Int move)
     {
-        // TileWorldPos y*TileSize 구조: tileY 켜지면 화면 위로 이동
-        // 하지만 스프라이트 시트 배치 기준으로 Up/Down 스왕
         PlayerFacing facing = move.y > 0 ? PlayerFacing.Up   :
                               move.y < 0 ? PlayerFacing.Down :
                               move.x < 0 ? PlayerFacing.Left : PlayerFacing.Right;
         playerFacing = facing;
-        if (playerAnimCoroutine != null) StopCoroutine(playerAnimCoroutine);
-        playerAnimCoroutine = StartCoroutine(PlayPlayerWalkAnim(facing));
-    }
-
-    private IEnumerator PlayPlayerWalkAnim(PlayerFacing facing, float frameTime = 0.08f)
-    {
-        var frames = GetPlayerFrames(facing);
-        if (frames == null) yield break;
-        var sr = playerObject.GetComponent<SpriteRenderer>();
-        int count = Mathf.Min(4, frames.Length); // 배열이 4개 이상이라도 반드시 4프레임만 재생
-        for (int i = 0; i < count; i++)
+        if (playerAnimCoroutine != null) { StopCoroutine(playerAnimCoroutine); playerAnimCoroutine = null; }
+        // 단일 스프라이트: 즉시 방향 전환
+        if (playerObject != null)
         {
-            if (frames[i] != null) sr.sprite = frames[i];
-            yield return new WaitForSeconds(frameTime);
+            var sr = playerObject.GetComponent<SpriteRenderer>();
+            if (sr != null) sr.sprite = GetPlayerDirectionSprite(facing);
         }
-        if (frames[0] != null) sr.sprite = frames[0];
     }
 
     private IEnumerator PlayPlayerDownedAnim(float frameTime = 0.12f)
     {
-        var frames = GetPlayerDownedFrames();
-        if (frames == null) { SetPlayerIdleSprite(); yield break; }
-        var sr = playerObject.GetComponent<SpriteRenderer>();
-        int count = Mathf.Min(4, frames.Length); // 반드시 4프레임만 재생
-        for (int i = 0; i < count; i++)
+        if (playerObject != null)
         {
-            if (frames[i] != null) sr.sprite = frames[i];
-            yield return new WaitForSeconds(frameTime);
+            var sr = playerObject.GetComponent<SpriteRenderer>();
+            if (sr != null) sr.sprite = GetPlayerDownedSprite();
         }
+        yield return null;
     }
 
-    // 사망 패널 상단 UI Image에 쓰러지는 애니메이션 루프 재생
+    // 사망 패널 상단 UI Image에 쓰러짐 스프라이트 표시
     private IEnumerator PlayDeathAnimOnUI(Image img, float frameTime = 0.14f)
     {
-        var frames = GetPlayerDownedFrames();
-        if (frames == null || frames.Length == 0) yield break;
-        int count = Mathf.Min(4, frames.Length);
-        while (img != null)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                if (img == null) yield break;
-                if (frames[i] != null) img.sprite = frames[i];
-                yield return new WaitForSeconds(frameTime);
-            }
-        }
+        if (img != null) img.sprite = GetPlayerDownedSprite();
+        yield return null;
     }
 
     // ====================================================================
@@ -1440,11 +2428,11 @@ public class GameSceneManager : MonoBehaviour
         var titleGo = new GameObject("Title"); titleGo.transform.SetParent(box.transform, false);
         var titleRt = titleGo.AddComponent<RectTransform>();
         titleRt.anchorMin = new Vector2(0f, 1f); titleRt.anchorMax = new Vector2(1f, 1f);
-        titleRt.pivot = new Vector2(0.5f, 1f); titleRt.anchoredPosition = new Vector2(0f, -8f); titleRt.sizeDelta = new Vector2(0f, 38f);
+        titleRt.pivot = new Vector2(0.5f, 1f); titleRt.anchoredPosition = new Vector2(0f, -8f); titleRt.sizeDelta = new Vector2(0f, 48f);
         var titleTxt = titleGo.AddComponent<Text>();
         titleTxt.text = "인벤토리";
         titleTxt.font = korFont ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        titleTxt.fontSize = 22; titleTxt.color = new Color(1f, 0.92f, 0.65f);
+        titleTxt.fontSize = 27; titleTxt.color = new Color(1f, 0.92f, 0.65f);
         titleTxt.alignment = TextAnchor.MiddleCenter;
         titleTxt.horizontalOverflow = HorizontalWrapMode.Overflow; titleTxt.verticalOverflow = VerticalWrapMode.Overflow;
 
@@ -1452,11 +2440,11 @@ public class GameSceneManager : MonoBehaviour
         var hintGo = new GameObject("Hint"); hintGo.transform.SetParent(box.transform, false);
         var hintRt = hintGo.AddComponent<RectTransform>();
         hintRt.anchorMin = new Vector2(0f, 1f); hintRt.anchorMax = new Vector2(1f, 1f);
-        hintRt.pivot = new Vector2(0.5f, 1f); hintRt.anchoredPosition = new Vector2(0f, -48f); hintRt.sizeDelta = new Vector2(0f, 18f);
+        hintRt.pivot = new Vector2(0.5f, 1f); hintRt.anchoredPosition = new Vector2(0f, -60f); hintRt.sizeDelta = new Vector2(0f, 22f);
         var hintTxt = hintGo.AddComponent<Text>();
         hintTxt.text = "좌클릭: 사용 │ 우클릭: 버리기 │ 드래그: 이동 │ [I] / [ESC]: 닫기";
         hintTxt.font = korFont ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        hintTxt.fontSize = 11; hintTxt.color = new Color(0.58f, 0.52f, 0.38f);
+        hintTxt.fontSize = 14; hintTxt.color = new Color(0.58f, 0.52f, 0.38f);
         hintTxt.alignment = TextAnchor.MiddleCenter;
         hintTxt.horizontalOverflow = HorizontalWrapMode.Overflow; hintTxt.verticalOverflow = VerticalWrapMode.Overflow;
 
@@ -1465,17 +2453,17 @@ public class GameSceneManager : MonoBehaviour
         var closeBtnImg = closeBtnGo.AddComponent<Image>(); closeBtnImg.color = new Color(0.65f, 0.10f, 0.10f, 0.95f);
         var closeBtnRt = closeBtnGo.GetComponent<RectTransform>();
         closeBtnRt.anchorMin = new Vector2(1f, 1f); closeBtnRt.anchorMax = new Vector2(1f, 1f); closeBtnRt.pivot = new Vector2(1f, 1f);
-        closeBtnRt.anchoredPosition = new Vector2(-8f, -6f); closeBtnRt.sizeDelta = new Vector2(36f, 36f);
+        closeBtnRt.anchoredPosition = new Vector2(-8f, -6f); closeBtnRt.sizeDelta = new Vector2(44f, 44f);
         var closeBtn = closeBtnGo.AddComponent<Button>();
         closeBtn.onClick.AddListener(() => { _inventoryPanel.SetActive(false); ItemSlotUI.HideTooltip(); });
         var cbX = closeBtn.colors; cbX.normalColor = Color.white; cbX.highlightedColor = new Color(1f, 0.6f, 0.6f, 1f); cbX.pressedColor = new Color(0.7f, 0.2f, 0.2f, 1f); closeBtn.colors = cbX;
-        MakeText(closeBtnGo.transform, "X", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 18, Color.white, TextAnchor.MiddleCenter).text = "✕";
+        MakeText(closeBtnGo.transform, "X", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 22, Color.white, TextAnchor.MiddleCenter).text = "✕";
 
         // InventorySlots 컨테이너 (위치와 크기는 RefreshInventoryPanel에서 결정)
         var slotsGo = new GameObject("InventorySlots"); slotsGo.transform.SetParent(box.transform, false);
         var slotsRt = slotsGo.AddComponent<RectTransform>();
         slotsRt.anchorMin = new Vector2(0.5f, 1f); slotsRt.anchorMax = new Vector2(0.5f, 1f);
-        slotsRt.pivot = new Vector2(0.5f, 1f); slotsRt.anchoredPosition = new Vector2(0f, -70f); slotsRt.sizeDelta = new Vector2(400f, 240f);
+        slotsRt.pivot = new Vector2(0.5f, 1f); slotsRt.anchoredPosition = new Vector2(0f, -88f); slotsRt.sizeDelta = new Vector2(400f, 240f);
         // RectMask2D: 컨테이너 경계 밖으로 아이템이 삐져나오지 않도록 마스크
         slotsGo.AddComponent<RectMask2D>();
 
@@ -1503,17 +2491,17 @@ public class GameSceneManager : MonoBehaviour
         int rows = _mainInvRows;
 
         // 슬롯 크기 (정사각형 아이콘 기반)
-        const float slotW  = 72f;
-        const float slotH  = 72f;
-        const float gapX   = 8f;
-        const float gapY   = 8f;
+        const float slotW  = 90f;
+        const float slotH  = 90f;
+        const float gapX   = 10f;
+        const float gapY   = 10f;
         float gridW = cols * slotW + (cols - 1) * gapX;
         float gridH = rows * slotH + (rows - 1) * gapY;
 
         // ── InvenBox 및 InventorySlots 컨테이너 크기 갱신 ─────────────────────
         var boxRt    = _inventoryPanel.transform.Find("InvenBox")?.GetComponent<RectTransform>();
         var slotsRt  = slotsRoot.GetComponent<RectTransform>();
-        if (boxRt   != null) boxRt.sizeDelta   = new Vector2(gridW + 60f, gridH + 100f);
+        if (boxRt   != null) boxRt.sizeDelta   = new Vector2(gridW + 80f, gridH + 126f);
         if (slotsRt != null) slotsRt.sizeDelta  = new Vector2(gridW, gridH);
 
         // ── 슬롯 생성 ────────────────────────────────────────────────────────
@@ -1773,11 +2761,11 @@ public class GameSceneManager : MonoBehaviour
         var titleGo = new GameObject("Title"); titleGo.transform.SetParent(box.transform, false);
         var titleRt = titleGo.AddComponent<RectTransform>();
         titleRt.anchorMin = new Vector2(0f, 1f); titleRt.anchorMax = new Vector2(1f, 1f);
-        titleRt.pivot = new Vector2(0.5f, 1f); titleRt.anchoredPosition = new Vector2(0f, -8f); titleRt.sizeDelta = new Vector2(0f, 38f);
+        titleRt.pivot = new Vector2(0.5f, 1f); titleRt.anchoredPosition = new Vector2(0f, -8f); titleRt.sizeDelta = new Vector2(0f, 48f);
         var titleTxt = titleGo.AddComponent<Text>();
         titleTxt.text = "장비 인벤토리  [E / ESC 닫기]";
         titleTxt.font = korFont ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        titleTxt.fontSize = 22; titleTxt.color = new Color(0.85f, 0.76f, 1f);
+        titleTxt.fontSize = 27; titleTxt.color = new Color(0.85f, 0.76f, 1f);
         titleTxt.alignment = TextAnchor.MiddleCenter;
         titleTxt.horizontalOverflow = HorizontalWrapMode.Overflow; titleTxt.verticalOverflow = VerticalWrapMode.Overflow;
 
@@ -1785,11 +2773,11 @@ public class GameSceneManager : MonoBehaviour
         var hintGo = new GameObject("Hint"); hintGo.transform.SetParent(box.transform, false);
         var hintRt = hintGo.AddComponent<RectTransform>();
         hintRt.anchorMin = new Vector2(0f, 1f); hintRt.anchorMax = new Vector2(1f, 1f);
-        hintRt.pivot = new Vector2(0.5f, 1f); hintRt.anchoredPosition = new Vector2(0f, -48f); hintRt.sizeDelta = new Vector2(0f, 18f);
+        hintRt.pivot = new Vector2(0.5f, 1f); hintRt.anchoredPosition = new Vector2(0f, -60f); hintRt.sizeDelta = new Vector2(0f, 22f);
         var hintTxt = hintGo.AddComponent<Text>();
-        hintTxt.text = "1×8 FIFO — 가득 차면 가장 오래된 장비가 자동으로 제거됩니다 │ [E] / [ESC]: 닫기";
+        hintTxt.text = "1×4 FIFO — 가득 차면 가장 오래된 장비가 자동으로 제거됩니다 │ [E] / [ESC]: 닫기";
         hintTxt.font = korFont ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        hintTxt.fontSize = 11; hintTxt.color = new Color(0.5f, 0.46f, 0.62f);
+        hintTxt.fontSize = 14; hintTxt.color = new Color(0.5f, 0.46f, 0.62f);
         hintTxt.alignment = TextAnchor.MiddleCenter;
         hintTxt.horizontalOverflow = HorizontalWrapMode.Overflow; hintTxt.verticalOverflow = VerticalWrapMode.Overflow;
 
@@ -1798,17 +2786,17 @@ public class GameSceneManager : MonoBehaviour
         var closeBtnImg = closeBtnGo.AddComponent<Image>(); closeBtnImg.color = new Color(0.65f, 0.10f, 0.10f, 0.95f);
         var closeBtnRt = closeBtnGo.GetComponent<RectTransform>();
         closeBtnRt.anchorMin = new Vector2(1f, 1f); closeBtnRt.anchorMax = new Vector2(1f, 1f); closeBtnRt.pivot = new Vector2(1f, 1f);
-        closeBtnRt.anchoredPosition = new Vector2(-8f, -6f); closeBtnRt.sizeDelta = new Vector2(36f, 36f);
+        closeBtnRt.anchoredPosition = new Vector2(-8f, -6f); closeBtnRt.sizeDelta = new Vector2(44f, 44f);
         var closeBtn = closeBtnGo.AddComponent<Button>();
         closeBtn.onClick.AddListener(() => { _equipmentPanel.SetActive(false); ItemSlotUI.HideTooltip(); });
         var cbA = closeBtn.colors; cbA.normalColor = Color.white; cbA.highlightedColor = new Color(1f, 0.6f, 0.6f, 1f); cbA.pressedColor = new Color(0.7f, 0.2f, 0.2f, 1f); closeBtn.colors = cbA;
-        MakeText(closeBtnGo.transform, "X", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 18, Color.white, TextAnchor.MiddleCenter).text = "✕";
+        MakeText(closeBtnGo.transform, "X", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 22, Color.white, TextAnchor.MiddleCenter).text = "✕";
 
-        // EquipSlots 컨테이너 (1×8, Refresh에서 크기 재설정)
+        // EquipSlots 컨테이너 (1×4, Refresh에서 크기 재설정)
         var slotsGo = new GameObject("EquipSlots"); slotsGo.transform.SetParent(box.transform, false);
         var slotsRt = slotsGo.AddComponent<RectTransform>();
         slotsRt.anchorMin = new Vector2(0.5f, 1f); slotsRt.anchorMax = new Vector2(0.5f, 1f);
-        slotsRt.pivot = new Vector2(0.5f, 1f); slotsRt.anchoredPosition = new Vector2(0f, -70f); slotsRt.sizeDelta = new Vector2(860f, 100f);
+        slotsRt.pivot = new Vector2(0.5f, 1f); slotsRt.anchoredPosition = new Vector2(0f, -88f); slotsRt.sizeDelta = new Vector2(860f, 100f);
         slotsGo.AddComponent<RectMask2D>();
 
         // 공유 툴팁 초기화 (인벤토리 패널보다 먼저 열 수도 있으므로 여기서도 보장)
@@ -1830,15 +2818,15 @@ public class GameSceneManager : MonoBehaviour
 
         // 슬롯 크기 (1×8 가로 배열, 정사각형 아이콘)
         const int   totalSlots = EQUIP_INV_MAX;
-        const float slotW  = 90f;
-        const float slotH  = 90f;
-        const float gapX   = 10f;
+        const float slotW  = 110f;
+        const float slotH  = 110f;
+        const float gapX   = 12f;
         float gridW = totalSlots * slotW + (totalSlots - 1) * gapX;
 
         // EquipBox와 EquipSlots 컨테이너 크기 갱신
         var boxRt   = _equipmentPanel.transform.Find("EquipBox")?.GetComponent<RectTransform>();
         var slotsRt = slotsRoot.GetComponent<RectTransform>();
-        if (boxRt   != null) boxRt.sizeDelta   = new Vector2(gridW + 60f, slotH + 120f);
+        if (boxRt   != null) boxRt.sizeDelta   = new Vector2(gridW + 70f, slotH + 148f);
         if (slotsRt != null) slotsRt.sizeDelta  = new Vector2(gridW, slotH);
 
         for (int i = 0; i < totalSlots; i++)
@@ -1867,7 +2855,7 @@ public class GameSceneManager : MonoBehaviour
             var numTxt = numGo.AddComponent<Text>();
             numTxt.text      = (i + 1).ToString();
             numTxt.font      = korFont ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            numTxt.fontSize  = 11;
+            numTxt.fontSize  = 14;
             numTxt.color     = new Color(0.5f, 0.45f, 0.6f, 0.8f);
             numTxt.alignment = TextAnchor.UpperLeft;
             numTxt.horizontalOverflow = HorizontalWrapMode.Overflow;
@@ -1931,7 +2919,16 @@ public class GameSceneManager : MonoBehaviour
             if (pos.x < 0) continue;
 
             var chest = new TreasureChest { pos = pos };
-            var go = MakeTile($"Chest_{placed}", pos.x, pos.y, chestClosedSprite, new Color(0.82f, 0.54f, 0.18f), 3);
+
+            // 단일 SpriteRenderer — lootbox.png 닫힌 스프라이트로 초기화
+            var go = new GameObject($"Chest_{placed}");
+            go.transform.position = TileWorldPos(pos.x, pos.y);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = chestClosedSprite;
+            sr.color        = Color.white;
+            sr.sortingOrder = 3;
+
+            // 크기 정규화 (타일 88% 채움)
             if (chestClosedSprite != null)
             {
                 float fs = TileSize * 0.88f / Mathf.Max(chestClosedSprite.bounds.size.x, chestClosedSprite.bounds.size.y);
@@ -1939,8 +2936,10 @@ public class GameSceneManager : MonoBehaviour
             }
             else
                 go.transform.localScale = Vector3.one * 0.88f;
+
             go.SetActive(false);
-            chest.go = go;
+            chest.go    = go;
+            chest.topGo = null; // 단일 레이어 — topGo 미사용
             _chests.Add(chest);
             placed++;
         }
@@ -1965,25 +2964,27 @@ public class GameSceneManager : MonoBehaviour
     private TreasureChest GetChestAt(int x, int y)
         => _chests.Find(c => c.pos.x == x && c.pos.y == y);
 
+    // 낙개 스프라이트 적용 — 너비가 하단과 일치하도록 스케일 부여,
+    // 낙개 하단이 상자 상단에 딥도록 Y 위치 자동 계산
+    // 상자의 단일 SpriteRenderer 스프라이트를 교체 (닫힘↔열림 전환)
+    private void ApplyChestTopSprite(TreasureChest chest, Sprite sprite)
+    {
+        if (chest?.go == null) return;
+        var sr = chest.go.GetComponent<SpriteRenderer>();
+        if (sr != null) sr.sprite = sprite;
+    }
+
     // ====================================================================
     // 아이템 상자 열기 → 선택 UI 표시
     // ====================================================================
     private void OpenTreasureChest(TreasureChest chest)
     {
         if (chest == null || chest.opened) return;
-        PlaySFX(sfxBonus);
+        PlaySFX(sfxLootboxOpen);
         AddLog("<color=#FFD700>✦ 아이템 상자를 발견했습니다! 아이템을 선택하세요.</color>");
 
-        // 상자 스프라이트 열림으로 교체
-        if (chest.go != null)
-        {
-            var sr = chest.go.GetComponent<SpriteRenderer>();
-            if (sr != null)
-            {
-                sr.sprite = chestOpenedSprite != null ? chestOpenedSprite : chestClosedSprite;
-                sr.color  = new Color(0.4f, 0.25f, 0.08f);
-            }
-        }
+        // 뚜껑을 열린 스프라이트로 교체 (위치/스케일 자동 재계산)
+        ApplyChestTopSprite(chest, chestOpenedSprite ?? chestClosedSprite);
 
         // 층 기반 랜덤 아이템 3개 생성
         var db = ChestDb;
@@ -2175,7 +3176,7 @@ public class GameSceneManager : MonoBehaviour
         // UI 닫기
         if (_chestChoicePanel != null) { Destroy(_chestChoicePanel); _chestChoicePanel = null; }
 
-        PlaySFX(sfxBonus);
+        PlaySFX(sfxLootboxOpen);
 
         if (!choice.isEquipment)
         {
@@ -2287,5 +3288,71 @@ public class GameSceneManager : MonoBehaviour
         if (_equipmentPanel != null && _equipmentPanel.activeSelf)
             RefreshEquipmentPanel();
     }
+
+#if UNITY_EDITOR
+    // ====================================================================
+    // 에디터 전용: 적 30종 초기값 설정
+    // Inspector 기어 아이콘 (⋮) > "적 30종 초기값 설정" 실행
+    // ====================================================================
+    [ContextMenu("적 30종 초기값 설정 (일반 20 + 보스 10)")]
+    private void InitDefaultEnemySlots()
+    {
+        const string B = "Assets/Brackeys/2D Mega Pack/";
+        Sprite s1 = LoadFirstSub(B + "Enemies/Gothic/GothicEnemy01.png");
+        Sprite s2 = LoadFirstSub(B + "Enemies/Gothic/GothicEnemy02.png");
+        Sprite s3 = LoadFirstSub(B + "Enemies/Gothic/FireheadEnemy.png");
+
+        UnityEditor.Undo.RecordObject(this, "Init Enemy Slots");
+        enemySlots = new EnemySlot[]
+        {
+            // ─ 일반 몬스터 20종 ────────────────────────────────────────────
+            S("슬라임",        "끌적한 점액으로 공격하는 기초 던전 몬스터",   false, s2, new Color(0.4f,0.9f,0.4f), 0.6f, 0.5f, 0.5f),
+            S("고블린",        "날카로운 단검을 휘두르는 작은 녹색 도적", false, s1, new Color(0.7f,1.0f,0.3f), 0.8f, 0.7f, 0.7f),
+            S("해골 전사",     "고대 마법으로 깨어난 언데드 해골 전사",  false, s2, new Color(0.9f,0.9f,0.9f), 0.9f, 0.8f, 0.8f),
+            S("동굴 박쥐",     "어둠 속을 날며 혼란을 주는 흡혁 박쥐",  false, s1, new Color(0.5f,0.3f,0.6f), 0.5f, 0.6f, 0.6f),
+            S("오크",          "거대한 몸집과 완력을 자랑하는 녹색 전사",  false, s2, new Color(0.4f,0.8f,0.4f), 1.2f, 1.1f, 1.0f),
+            S("마법 고블린",   "간단한 주문을 구사하는 지능적인 고블린", false, s1, new Color(0.8f,0.4f,1.0f), 0.7f, 1.0f, 0.9f),
+            S("독거지",        "독이 있는 실크로 먹이를 포박하는 거설 거지",  false, s3, new Color(0.5f,0.7f,0.2f), 0.8f, 0.9f, 0.8f),
+            S("좀비",          "느리지만 끝질기게 첨아오는 썾은 언데드",   false, s2, new Color(0.5f,0.7f,0.4f), 1.1f, 0.7f, 0.7f),
+            S("스켈레톤 궁수", "뉴로 된 활을 싸는 원거리 언데드 사수",   false, s1, new Color(0.8f,0.8f,0.7f), 0.7f, 1.0f, 0.9f),
+            S("오크 전사",     "전투 훈련을 받은 베테랑 오크 병사",      false, s2, new Color(0.2f,0.6f,0.2f), 1.3f, 1.2f, 1.1f),
+            S("화염 슬라임",   "몸 전체에서 불꽃을 내뛰는 위험한 슬라임",  false, s3, new Color(1.0f,0.5f,0.1f), 0.8f, 1.1f, 1.0f),
+            S("독 거인",       "독성 안개를 뒤에서 접근하는 거대 생명체",  false, s1, new Color(0.3f,0.8f,0.1f), 1.4f, 1.0f, 1.1f),
+            S("냉기 골렇",    "얼음 결정으로 이루어진 감각 없는 거인",     false, s2, new Color(0.5f,0.8f,1.0f), 1.5f, 1.1f, 1.2f),
+            S("범파이어",      "피에 굴주린 어둠의 불멸 존재",           false, s3, new Color(0.8f,0.0f,0.2f), 1.0f, 1.3f, 1.3f),
+            S("반란군 기사",   "왕국을 배신하고 던전에 숨어든 저주받은 기사", false, s1, new Color(0.5f,0.6f,0.8f), 1.3f, 1.3f, 1.3f),
+            S("악마 전사",     "지옥에서 소환된 붉은 갑옵의 전사",      false, s2, new Color(1.0f,0.2f,0.1f), 1.4f, 1.4f, 1.4f),
+            S("마녀",          "저주와 독 마법을 구사하는 사악한 마법사",   false, s3, new Color(0.7f,0.2f,0.9f), 1.0f, 1.5f, 1.5f),
+            S("어둠 기사",     "어두운 힘으로 강화된 죽음의 기사",      false, s1, new Color(0.2f,0.1f,0.3f), 1.6f, 1.5f, 1.5f),
+            S("고대 골렁",    "고대 마법 유적으로 만들어진 돌 거인",      false, s2, new Color(0.6f,0.5f,0.4f), 2.0f, 1.4f, 1.6f),
+            S("카오스 오크",   "광기에 사로잡혀 모든 것을 파괴하는 오크",    false, s3, new Color(0.9f,0.3f,0.1f), 1.8f, 1.8f, 1.8f),
+            // ─ 보스 몬스터 10종 (3층마다 출현) ─────────────────────────────────
+            S("고블린 왕",     "수백의 고블린을 지배하는 잔혹한 부족 족장",  true,  s1, new Color(0.6f,1.0f,0.2f), 3.0f, 2.0f, 3.0f),
+            S("해골 군주",     "언데드 군단을 이끊는 죽음의 선봉",      true,  s2, new Color(0.8f,1.0f,0.8f), 3.5f, 2.5f, 4.0f),
+            S("독거지 여왕",  "치명적 독을 뒤곳걳 슬 군단의 무자비한 여왕", true,  s3, new Color(0.5f,0.9f,0.0f), 4.0f, 2.5f, 5.0f),
+            S("오크 대족장",  "수천의 오크를 통솔하는 전설의 지도자",     true,  s1, new Color(0.1f,0.7f,0.1f), 4.5f, 3.0f, 6.0f),
+            S("화염 군주",     "불꽃을 자유로이 다루는 불의 절대 지배자",   true,  s3, new Color(1.0f,0.4f,0.0f), 5.0f, 3.5f, 7.0f),
+            S("저주 마녀왕",  "고대 저주 마법으로 던전 전체를 통제하는 자",   true,  s2, new Color(0.8f,0.0f,0.9f), 5.5f, 3.5f, 8.0f),
+            S("어둠의 용",     "암흐 속에서 탄생한 전설의 고대 용",      true,  s3, new Color(0.1f,0.0f,0.4f), 6.0f, 4.0f,10.0f),
+            S("악마 대공",     "지옥의 여섯 왕자 중 한 명인 절대 악마",  true,  s1, new Color(0.8f,0.0f,0.1f), 6.5f, 4.5f,12.0f),
+            S("고대 드리치",  "불멸을 갈망하다 타락한 최강위 언데드 마법사", true,  s2, new Color(0.5f,0.0f,0.8f), 7.0f, 5.0f,15.0f),
+            S("던전 군주",     "이 던전 전체를 지배하는 절대 악의 화신",   true,  s3, new Color(1.0f,0.8f,0.0f), 8.0f, 6.0f,20.0f),
+        };
+        UnityEditor.EditorUtility.SetDirty(this);
+        Debug.Log("[Setup] 적 30종 초기 슬롯 설정 완료 (일반 20종 + 보스 10종)");
+    }
+
+    private static EnemySlot S(string name, string desc, bool boss, Sprite spr, Color col,
+                               float hp, float atk, float exp)
+        => new EnemySlot { name=name, description=desc, isBoss=boss, spriteRight=spr, color=col,
+                           hpScale=hp, atkScale=atk, expScale=exp };
+
+    private static Sprite LoadFirstSub(string path)
+    {
+        foreach (var a in UnityEditor.AssetDatabase.LoadAllAssetsAtPath(path))
+            if (a is Sprite s) return s;
+        return null;
+    }
+#endif
 }
 

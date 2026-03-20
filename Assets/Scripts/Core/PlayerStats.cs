@@ -38,6 +38,10 @@ public class PlayerStats : MonoBehaviour
     // 이동 횟수 카운터 (화상/중독 주기 발동용)
     private int _moveCounter = 0;
 
+    // ── 카르마 ────────────────────────────────────────────────────────────────
+    /// <summary>카르마 수치 (0 ~ 100%). 사망 시 각인 확률에 사용되며 등장 간 유지, 사망 시 초기화.</summary>
+    public float Karma { get; private set; } = 0f;
+
     // ── 레벨업 경험치 테이블 ──────────────────────────────────────────────────
     public int ExpToNextLevel => Level * 50;
 
@@ -45,6 +49,7 @@ public class PlayerStats : MonoBehaviour
     public event System.Action<int> OnLevelUp;                              // (새 레벨)
     public event System.Action<int, int> OnHpChanged;                       // (현재HP, 최대HP)
     public event System.Action<int> OnGoldChanged;                          // (현재골드)
+    public event System.Action<float> OnKarmaChanged;                       // (현재 카르마 %)
     public event System.Action OnDeath;
     public event System.Action<StatusEffectType, bool> OnStatusEffectChanged; // (type, 추가=true)
 
@@ -62,6 +67,7 @@ public class PlayerStats : MonoBehaviour
         ExtraItemBoxRows = 0;
         _healingBoostFlat    = 0f;
         HasReviveItem    = false;
+        Karma            = 0f;
         _moveCounter     = 0;
         _fatigueReduceFraction = 0f;
         _activeEffects.Clear();
@@ -152,6 +158,39 @@ public class PlayerStats : MonoBehaviour
         Gold += amount;
         GameManager.Instance?.History?.RecordGoldObtained(amount);
         OnGoldChanged?.Invoke(Gold);
+    }
+
+    /// <summary>골드 소모 (부족 시 false 반환).</summary>
+    public bool SpendGold(int amount)
+    {
+        if (Gold < amount) return false;
+        Gold -= amount;
+        OnGoldChanged?.Invoke(Gold);
+        return true;
+    }
+
+    // ── 카르마 관리 ───────────────────────────────────────────────────────────
+    /// <summary>일반 몬스터 처치 시 카르마 랜덤 증가 (0 ~ 2.5%).</summary>
+    public void AddKarmaOnNormalKill()
+    {
+        float gain = Random.Range(0f, 2.5f);
+        Karma = Mathf.Min(100f, Karma + gain);
+        OnKarmaChanged?.Invoke(Karma);
+    }
+
+    /// <summary>보스 처치 시 카르마 랜덤 증가 (5 ~ 10%).</summary>
+    public void AddKarmaOnBossKill()
+    {
+        float gain = Random.Range(5f, 10f);
+        Karma = Mathf.Min(100f, Karma + gain);
+        OnKarmaChanged?.Invoke(Karma);
+    }
+
+    /// <summary>카르마 수치 감소 (소비 아이템 사용 시).</summary>
+    public void ReduceKarma(float amount)
+    {
+        Karma = Mathf.Max(0f, Karma - amount);
+        OnKarmaChanged?.Invoke(Karma);
     }
 
     // ── 경험치 / 레벨업 ───────────────────────────────────────────────────────

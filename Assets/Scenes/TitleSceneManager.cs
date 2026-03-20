@@ -38,47 +38,18 @@ public class TitleSceneManager : MonoBehaviour
                 new Vector2(0f, 140f), new Vector2(900f, 340f), Color.white, logo, true);
         }
 
-        // ── 타이틀 텍스트 (로고 없을 때 폴백) ─────────────────────────────
-        if (logo == null)
-        {
-            var titleTxt = MakeText(canvas.transform, "TitleText", "던전 슬레이어",
-                new Vector2(0f, 160f), new Vector2(900f, 160f), 90,
-                new Color(1f, 0.92f, 0.6f), bold: true, anchor: TextAnchor.MiddleCenter);
-        }
-
-        // ── 부제 텍스트 ───────────────────────────────────────────────────
-        MakeText(canvas.transform, "SubTitle", "DUNGEON SLAYER",
-            new Vector2(0f, 40f), new Vector2(700f, 60f), 32,
-            new Color(0.65f, 0.55f, 0.38f), bold: false, anchor: TextAnchor.MiddleCenter);
-
         // ── 게임 시작 버튼 ────────────────────────────────────────────────
+        Sprite startBtnSpr = Resources.Load<Sprite>("btn_start_game");
         CreateButtonWithIcon(canvas, "StartButton",
             pos: new Vector2(0f, -120f), size: new Vector2(480f, 130f),
-            label: "게임 시작", fontSize: 46,
-            sprite: Theme?.btnPrimary, iconSprite: Theme?.iconCastle,
+            label: startBtnSpr != null ? "" : "게임 시작", fontSize: 46,
+            sprite: startBtnSpr ?? Theme?.btnPrimary, iconSprite: null,
             textColor: new Color(1f, 0.95f, 0.8f),
             fallbackColor: new Color(0.45f, 0.28f, 0.08f),
             action: () => {
                 Debug.Log("[TitleSceneManager] Start → GameOptionsScene");
                 SceneManager.LoadScene("GameOptionsScene");
             });
-
-        // ── 하단 저작권 ───────────────────────────────────────────────────
-        var footer = new GameObject("Footer");
-        footer.transform.SetParent(canvas.transform, false);
-        var frt = footer.AddComponent<RectTransform>();
-        frt.anchorMin = new Vector2(0f, 0f); frt.anchorMax = new Vector2(1f, 0f);
-        frt.pivot = new Vector2(0.5f, 0f);
-        frt.anchoredPosition = new Vector2(0f, 22f);
-        frt.sizeDelta = new Vector2(0f, 36f);
-        var ft = footer.AddComponent<Text>();
-        ft.text = "2026. Supervised by Loard Kalito.  This product is a fan-made game.";
-        ft.font = GetFont(false);
-        ft.fontSize = 20;
-        ft.color = new Color(0.45f, 0.42f, 0.38f);
-        ft.alignment = TextAnchor.MiddleCenter;
-        ft.horizontalOverflow = HorizontalWrapMode.Overflow;
-        ft.verticalOverflow   = VerticalWrapMode.Overflow;
 
         EnsureEventSystem();
         Debug.Log(">>> [TitleSceneManager] SetupTitleUI Completed.");
@@ -160,7 +131,7 @@ public class TitleSceneManager : MonoBehaviour
         rt.anchoredPosition = pos; rt.sizeDelta = size;
 
         var img = btnObj.AddComponent<Image>();
-        if (sprite != null) { img.sprite = sprite; img.type = Image.Type.Sliced; img.color = Color.white; }
+        if (sprite != null) { img.sprite = sprite; img.type = Image.Type.Simple; img.preserveAspect = true; img.color = Color.white; }
         else                { img.color = fallbackColor; }
 
         var btn = btnObj.AddComponent<Button>();

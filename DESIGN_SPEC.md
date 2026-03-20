@@ -35,7 +35,8 @@
 │    ├── InventoryManager   (3종 아이템박스 / 무게)                 │
 │    ├── EngravingManager   (각인 10개 / 해금 / 적용)              │
 │    ├── GameHistoryManager (이력 / 달성목표 / PlayerPrefs)        │
-│    └── AudioManager       (BGM / SFX / PlayerPrefs)             │
+│    ├── AudioManager       (BGM / SFX / PlayerPrefs)             │
+│    └── ShopManager        (보스 룸 상점 / 금고 입출금)            │
 │                                                                  │
 │  IGameUI ← 현재 활성 씬의 UI 구현체가 등록                        │
 └──────────────────────────────────────────────────────────────────┘
@@ -111,6 +112,7 @@
 | 기본 공격력 | 10 | 레벨업마다 +2 |
 | 기본 방어력 | 0 | 레벨업마다 +1 |
 | 골드 | 0 | - |
+| 카르마 | 0% | 0~100%, 사망 시 초기화, 몬스터 처치 시 랜덤 증가 |
 | 무게 제한 | 300 kg | - |
 
 ### 레벨업 규칙
@@ -212,6 +214,7 @@ player.RemoveStatusEffect(StatusEffectType.Fatigue);
 | `CureStatusEffect` | 특정 상태이상 해제 | `statusEffectType` |
 | `ApplyStatusEffect` | 특정 상태이상 부여 | `statusEffectType` |
 | `CursedWeight` | 무거운 저주 아이템 (버릴 수 없음) | float (kg) |
+| `ReduceKarma` | 카르마 수치 감소 (소비 아이템용) | float (감소량 %) |
 
 ### 5.3 아이템 박스 3종
 
@@ -256,6 +259,8 @@ player.RemoveStatusEffect(StatusEffectType.Fatigue);
 | `isEquipment` | bool | 장비 박스 배치 여부 |
 | `isCursed` | bool | 버리기/해제 불가 여부 |
 | `goldValue` | int | 판매 골드 가치 |
+| `isConsumable` | bool | 상점에서 판매 가능 여부 |
+| `shopPrice` | int | 상점 구매 가격 (0이면 비매품) |
 
 ---
 
@@ -263,7 +268,8 @@ player.RemoveStatusEffect(StatusEffectType.Fatigue);
 
 ### 개요
 
-- 플레이어가 **사망할 때마다** 2% 확률로 새로운 각인 해금
+- 플레이어가 **사망할 때마다** 현재 **카르마 수치%** 확률로 새로운 각인 해금
+  (카르마 0% → 해금 불가, 카르마 50% → 50% 확률, 카르마 100% → 확정 해금)
 - 최대 **10개** 각인 보유 가능
 - 해금된 각인은 다음 게임 시작 시 자동으로 효과 적용
 - PlayerPrefs에 영구 저장
@@ -322,13 +328,27 @@ player.RemoveStatusEffect(StatusEffectType.Fatigue);
     │
     └─► EngravingManager.TryUnlockOnDeath()
             │
-            ├─ Random.value > 0.02f ? → 해금 없음 (98% 확률)
+            ├─ Random.value > (karma / 100) ? → 해금 없음
             │
-            └─ Random.value <= 0.02f ? → 미해금 각인 풀에서 랜덤 선택
+            └─ Random.value <= (karma / 100) ? → 미해금 각인 풀에서 랜덤 선택
                         │
                         ├─ 이미 10개 보유 중 → 해금 없음
                         └─ 해금 성공 → PlayerPrefs 저장
 ```
+
+### 각인 제거 시스템
+
+- **제거 비용**: 1,000 골드 × 2^(누적 제거 횟수) — 1,000 → 2,000 → 4,000 → …
+- 제거 횟수는 `GameHistoryManager.EngravingRemoveCount`에 영구 저장
+- `EngravingManager.TryRemoveEngraving(data)` 호출 시 자동으로 골드 차감
+
+### 각인 패널 UI
+
+- 로비(GameOptionsScene)에 **5열 × 2행 = 10 슬롯** 그리드 패널 표시
+- 각 슬롯(`EngravingSlotUI`) 기능:
+  - **마우스 오버**: 이름·효과·설명·제거 비용을 표시하는 툴팁 카드
+  - **클릭**: "이 각인을 제거하시겠습니까?" 확인 팝업
+- `EngravingManager.OnEngravingsChanged` 이벤트 구독으로 자동 갱신
 
 ---
 
@@ -353,6 +373,15 @@ player.RemoveStatusEffect(StatusEffectType.Fatigue);
 | 티어 4 | 16 ~ 20층 | 21 | +2 | ×2.5 | ×2.2 |
 | 티어 5 | 21 ~ 25층 | 26 | +2 | ×3.2 | ×2.8 |
 | 티어 6 | 26 ~ 30층 | 31 | +2 | ×4.0 | ×3.5 |
+
+### 보스 룸 구조 설정 (DungeonFloorConfig)
+
+| 필드명 | 기본값 | 설명 |
+|--------|--------|------|
+| `bossCorridorLength` | 8 | 보스 룸 앞 복도 길이 (타일 수) |
+| `bossCorridorHasDoor` | true | 복도 시작에 문(잠금 연출) 존재 여부 |
+| `hasBossRoomShop` | true | 보스 룸 입구 옆 상점 생성 여부 |
+| `portalOnlyInBossRoom` | true | 다음 층 포탈이 보스룸에만 생성 여부 |
 
 ### 몬스터 레벨 계산
 
@@ -391,6 +420,7 @@ player.RemoveStatusEffect(StatusEffectType.Fatigue);
 | `expPerLevel` | float | 레벨당 경험치 증가량 |
 | `goldDropMin/Max` | int | 골드 드롭 범위 |
 | `aggroRange` | float | 어그로 감지 거리 (타일) |
+| `bossBattleBgm` | AudioClip | 보스 전투 전용 BGM (null이면 기본 BGM; Boss 등급 전용) |
 | `minFloor / maxFloor` | int | 등장 가능 층수 범위 |
 | `dropTable[]` | `ItemDropEntry[]` | 아이템 드롭 테이블 |
 | `statusOnHitChance` | float | 상태이상 부여 확률 (0~1) |
@@ -430,6 +460,8 @@ public class ItemDropEntry
 | 총 골드 획득량 | `hist_gold` | 누적 획득 골드 합계 |
 | 총 기습 당한 횟수 | `hist_surprises` | 적에게 기습당한 횟수 |
 | 몬스터 킬 수 | `hist_kill_{name}` | 종류별 처치 횟수 |
+| 금고 보관 골드 | `hist_vaultGold` | 입금된 골드 (사망 시에도 보존) |
+| 각인 제거 횟수 | `hist_engRemove` | 각인 제거 누적 횟수 (비용 계산 지수로 사용) |
 
 ### 달성 목표 10종 (`AchievementID`)
 
@@ -468,7 +500,12 @@ Assets/
       EngravingManager.cs
       GameHistoryManager.cs
       AudioManager.cs
+      ShopManager.cs         ← 보스 룸 상점 / 금고 관리
       IGameUI.cs
+    UI/
+      BossRoomUI.cs          ← 보스 HUD (이름·HP 바·BGM)
+      EngravingSlotUI.cs     ← 각인 슬롯 단위 UI
+      EngravingPanelUI.cs    ← 대기화면 각인 패널 (5×2)
   Scenes/
     GameBootstrap.cs
     GameHistorySceneManager.cs
@@ -508,7 +545,7 @@ Assets/
 | `DungeonConfig` | 프로퍼티 | 던전 설정 ScriptableObject |
 | `StartNewGame()` | 메서드 | 새 게임 초기화 후 GameScene 전환 |
 | `AdvanceFloor()` | 메서드 | 다음 층으로 이동 |
-| `OnPlayerDeath()` | 메서드 | 사망 처리 (각인 해금 시도 → 로비 이동) |
+| `OnPlayerDeath()` | 메서드 | 사망 처리 (현재 Karma를 각인 해금에 전달 → 로비 이동) |
 | `GoToLobby/Setting/History/Title()` | 메서드 | 각 씬으로 이동 |
 
 ### PlayerStats 이벤트
@@ -520,6 +557,7 @@ Assets/
 | `OnGoldChanged` | `Action<int>` | 골드 변경 |
 | `OnDeath` | `Action` | 사망 |
 | `OnStatusEffectChanged` | `Action<StatusEffectType, bool>` | 상태이상 추가/제거 |
+| `OnKarmaChanged` | `Action<float>` | 카르마 변경 (새 값 전달) |
 
 ### InventoryManager 이벤트
 
@@ -528,6 +566,42 @@ Assets/
 | `OnInventoryChanged` | `Action` | 아이템 추가/제거/이동 |
 | `OnPotionCountChanged` | `Action` | 회복약 개수 변경 |
 | `OnOverweightChanged` | `Action<bool>` | 무게 초과 상태 변경 (true=초과) |
+
+### ShopManager
+
+| 멤버 | 종류 | 설명 |
+|------|------|------|
+| `Open()` | 메서드 | 소비 아이템 셔플 후 `shopSlotCount`개 진열 |
+| `TryBuyItem(ItemData)` | 메서드 | 골드 차감 후 인벤토리에 아이템 추가 |
+| `TryDeposit(int)` | 메서드 | 플레이어 골드를 금고(VaultGold)에 입금 |
+| `TryWithdraw(int)` | 메서드 | 금고에서 플레이어 골드로 출금 |
+| `VaultGold` | 프로퍼티 | `GameHistoryManager.VaultGold` 래퍼 (사망 후에도 보존) |
+
+**Inspector 필드**: `allConsumables[]` (판매 아이템 풀), `shopSlotCount = 4` (진열 개수)
+
+### BossRoomUI
+
+보스 룸 진입 시 화면 상단에 표시되는 HUD 컴포넌트.
+
+| 멤버 | 종류 | 설명 |
+|------|------|------|
+| `Show(EnemyData, int, int)` | 메서드 | HUD 표시 + 보스 BGM 재생 (boss, currentHp, maxHp) |
+| `UpdateHp(int, int)` | 메서드 | HP 슬라이더 및 텍스트 갱신 |
+| `Hide()` | 메서드 | HUD 숨김 |
+
+**Inspector 연결 필드**: `hudRoot`, `bossNameText`, `bossDescText`, `hpSlider`, `hpText`
+
+### EngravingPanelUI
+
+로비(대기화면)에 배치되는 각인 현황 패널.
+
+| 멤버 | 종류 | 설명 |
+|------|------|------|
+| `BuildSlots()` | 메서드 | `EngravingSlotUI` 프리팹 10개를 GridLayoutGroup에 동적 생성 |
+| `Refresh()` | 메서드 | `EngravingManager.GetUnlockedEngravings()`로 슬롯 갱신 |
+
+**Inspector 연결 필드**: `slotPrefab` (EngravingSlotUI), `gridParent`  
+`EngravingManager.OnEngravingsChanged` 이벤트 구독으로 자동 갱신.
 
 ---
 
@@ -571,3 +645,5 @@ Assets/
 | `hist_surprises` | 총 기습 당한 횟수 | GameHistoryManager |
 | `hist_kill_{name}` | 종류별 몬스터 킬 수 | GameHistoryManager |
 | `achv_{id}` | 달성 목표 달성 여부 | GameHistoryManager |
+| `hist_vaultGold` | 금고 보관 골드 | GameHistoryManager |
+| `hist_engRemove` | 각인 제거 누적 횟수 | GameHistoryManager |

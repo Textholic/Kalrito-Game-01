@@ -25,7 +25,10 @@
 15. [각인 시스템 조작 API](#15-각인-시스템-조작-api)
 16. [게임 이력 기록 API](#16-게임-이력-기록-api)
 17. [키 입력 레퍼런스](#17-키-입력-레퍼런스)
-18. [자주 발생하는 문제 & 해결책](#18-자주-발생하는-문제--해결책)
+18. [보스 룸 UI 사용법](#18-보스-룸-ui-사용법)
+19. [상점 시스템 사용법](#19-상점-시스템-사용법)
+20. [각인 패널 UI 설정](#20-각인-패널-ui-설정)
+21. [자주 발생하는 문제 & 해결책](#21-자주-발생하는-문제--해결책)
 
 ---
 
@@ -129,6 +132,8 @@ Weight Grams     : 무게 (그램 단위, 1000 = 1kg)
 Is Equipment     : 장비박스에 배치할 경우 체크
 Is Cursed        : 버리기/해제 불가 아이템이면 체크
 Gold Value       : 판매 가격
+Is Consumable    : 상점에서 판매 가능한 소비 아이템이면 체크
+Shop Price       : 상점 구매 가격 (0이면 상점에서 판매 안 됨)
 Effects          : 효과 목록 (아래 참조)
 ```
 
@@ -196,6 +201,7 @@ Aggro Range         : 어그로 감지 거리 (타일 단위)
 Min Floor / Max Floor : 등장 가능 층수 범위
 Status On Hit Chance: 공격 시 상태이상 부여 확률 (0~1)
 On Hit Status Effect: 부여할 상태이상 (없으면 None)
+Boss Battle BGM     : (Rank = Boss 전용) 전투 시 재생할 BGM AudioClip (null이면 기본 BGM)
 Drop Table          : 아이템 드롭 테이블 (아래 참조)
 ```
 
@@ -494,6 +500,24 @@ player.OnMoved();
 
 // 새 게임 초기화
 player.InitializeNewGame();
+
+// 골드 소모 (상점 구매, 각인 제거 등)
+bool ok = player.SpendGold(500);  // 잔액 부족 시 false 반환
+
+// 카르마 조회 (0~100)
+float karma = player.Karma;
+
+// 카르마 변경 이벤트 구독
+player.OnKarmaChanged += (newKarma) => { /* UI 갱신 등 */ };
+
+// 일반 몬스터 처치 시 카르마 증가 (0~2.5% 랜덤)
+player.AddKarmaOnNormalKill();
+
+// 보스 처치 시 카르마 증가 (5~10% 랜덤)
+player.AddKarmaOnBossKill();
+
+// 소비 아이템(ReduceKarma) 사용 시 카르마 감소
+player.ReduceKarma(10f);
 ```
 
 ---
@@ -550,7 +574,8 @@ InventorySlot equip = inv.GetEquipSlot(index);
 var eng = GameManager.Instance.Engraving;
 
 // 사망 시 각인 해금 시도 (GameManager.OnPlayerDeath()에서 자동 호출됨)
-eng.TryUnlockOnDeath();
+// karma(0~100) 값이 해금 확률(%)로 사용됩니다
+eng.TryUnlockOnDeath(player.Karma);
 
 // 해금된 각인 목록 가져오기
 List<EngravingData> unlocked = eng.GetUnlockedEngravings();
@@ -560,6 +585,12 @@ eng.ApplyAllEngravings(player);
 
 // 해금 여부 확인
 bool has = eng.IsUnlocked(engravingData);
+
+// 현재 각인 제거 비용 조회 (1,000 × 2^제거누적횟수)
+int cost = eng.GetRemoveCost();
+
+// 각인 제거: 비용 차감 후 각인 삭제 (실패 시 false)
+bool ok = eng.TryRemoveEngraving(engravingData);
 ```
 
 ### 각인 풀 수동 등록 (런타임)
@@ -603,6 +634,18 @@ bool done = hist.IsAchievementUnlocked(AchievementID.FLOOR_10);
 
 // 이력 전체 초기화
 hist.ResetHistory();
+
+// 골드를 금고에 입금 (플레이어 골드 차감, 잔액 부족 시 false)
+bool ok = hist.DepositGold(500);
+
+// 금고에서 플레이어 골드로 출금 (금고 부족 시 false)
+bool ok2 = hist.WithdrawGold(500);
+
+// 현재 금고 보관 골드 조회
+int vault = hist.VaultGold;
+
+// 각인 제거 횟수 기록 (TryRemoveEngraving 내부에서 자동 호출됨)
+hist.RecordEngravingRemove();
 ```
 
 ---
@@ -623,7 +666,102 @@ hist.ResetHistory();
 
 ---
 
-## 18. 자주 발생하는 문제 & 해결책
+## 18. 보스 룸 UI 사용법
+
+`BossRoomUI.cs`를 보스 룸 씬의 Canvas 하위에 배치하고, 보스 전투 시스템에서 아래 메서드를 호출합니다.
+
+### Inspector 연결
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `hudRoot` | GameObject | HUD 전체 루트 (Show/Hide 대상) |
+| `bossNameText` | TextMeshProUGUI | 보스 이름 텍스트 |
+| `bossDescText` | TextMeshProUGUI | 보스 설명 텍스트 |
+| `hpSlider` | Slider | 보스 HP 슬라이더 |
+| `hpText` | TextMeshProUGUI | "현재/최대 HP" 텍스트 |
+
+### 코드 사용 예시
+
+```csharp
+// 보스 룸 진입 시
+bossRoomUI.Show(bossEnemyData, currentHp, maxHp);
+
+// HP 변경 시마다
+bossRoomUI.UpdateHp(currentHp, maxHp);
+
+// 보스 처치 / 룸 이탈 시
+bossRoomUI.Hide();
+```
+
+> `Show()` 호출 시 `EnemyData.bossBattleBgm`이 null이 아니면 자동으로 BGM이 교체됩니다.
+
+---
+
+## 19. 상점 시스템 사용법
+
+`ShopManager.cs`를 보스 룸 씬의 적절한 GameObject에 배치합니다.
+
+### Inspector 연결
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `allConsumables` | `ItemData[]` | 상점 진열 가능한 소비 아이템 풀 (isConsumable=true, shopPrice>0인 것들) |
+| `shopSlotCount` | int | 한 번에 진열할 아이템 수 (기본값: 4) |
+
+### 코드 사용 예시
+
+```csharp
+var shop = GetComponent<ShopManager>();
+
+// 상점 열기 (아이템 랜덤 진열)
+shop.Open();
+
+// 아이템 구매 시도 (골드 부족 또는 인벤토리 가득 찼으면 false)
+bool ok = shop.TryBuyItem(itemData);
+
+// 금고 입금 (플레이어 소지 골드 → VaultGold)
+bool ok = shop.TryDeposit(200);
+
+// 금고 출금 (VaultGold → 플레이어 소지 골드)
+bool ok = shop.TryWithdraw(200);
+
+// 현재 금고 잔액 확인
+int vault = shop.VaultGold;
+```
+
+> 금고(VaultGold)는 **사망해도 초기화되지 않으며**, `hist_vaultGold` 키로 PlayerPrefs에 저장됩니다.
+
+---
+
+## 20. 각인 패널 UI 설정
+
+`EngravingPanelUI.cs`를 로비(GameOptionsScene) Canvas에 배치합니다.
+
+### Inspector 연결
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `slotPrefab` | `EngravingSlotUI` | 슬롯 단위 프리팩 |
+| `gridParent` | Transform | GridLayoutGroup이 붙은 부모 Transform |
+
+### 동작 방식
+
+1. `Awake()`에서 `BuildSlots()`로 슬롯 10개 동적 생성
+2. `Start()`에서 `Refresh()`로 현재 해금 각인 목록 반영
+3. `EngravingManager.OnEngravingsChanged` 이벤트를 구독하여 각인 변화 시 자동 갱신
+
+### EngravingSlotUI 동작
+
+| 입력 | 동작 |
+|------|------|
+| 마우스 오버 | 이름·효과·설명·제거 비용 툴팁 카드 표시 |
+| 마우스 아웃 | 툴팁 닫힄 |
+| 클릭 | "이 각인을 제거하시겠습니까? (비용: XXX G)" 팝업 |
+| 팝업 확인 | `EngravingManager.TryRemoveEngraving()` 호출 |
+
+---
+
+## 21. 자주 발생하는 문제 & 해결책
 
 ### Unity Safe Mode 진입 (컴파일 에러)
 

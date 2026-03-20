@@ -29,6 +29,7 @@ public enum ItemEffectType
     CureStatusEffect,   // 상태이상 해제 (statusEffectType 지정)
     ApplyStatusEffect,  // 상태이상 부여 (적 또는 자신)
     CursedWeight,       // value kg 강제 점유, 버릴 수 없음
+    ReduceKarma,        // 카르마 수치 감소 (value = 감소량 %)
 }
 
 // ── 단일 아이템 효과 데이터 ──────────────────────────────────────────────────
@@ -90,6 +91,14 @@ public class ItemData : ScriptableObject
     [Header("골드 가치")]
     [Tooltip("드롭 시 골드 환산 가치 (0 = 골드로 환산 불가)")]
     public int          goldValue   = 0;
+
+    // ── 상점 설정 ─────────────────────────────────────────────────────────────
+    [Header("상점 설정")]
+    [Tooltip("소비 아이템 여부 (true면 상점 판매 후보로 포함됨)")]
+    public bool         isConsumable = false;
+
+    [Tooltip("상점 판매 가격 (0이면 상점에서 판매되지 않음)")]
+    public int          shopPrice   = 0;
 
     // ── 편의 메서드 ───────────────────────────────────────────────────────────
     public bool HasEffect(ItemEffectType type)

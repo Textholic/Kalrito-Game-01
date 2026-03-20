@@ -23,7 +23,7 @@ public static class StartupMessages
         "핑크가 아니야, 마젠타다!",
         "Nuclear? Is it better than Start-Stone?",
         "아빠 안잔다!!!!",
-        "깨시! 꺠시! 깨시!",
+        "깨시! 깨시! 깨시!",
         "내일 볼 거지만 다음주에 만납시다",
         "내가 뛰어든게 아니다. 거기에 함정이 있었다",
     };

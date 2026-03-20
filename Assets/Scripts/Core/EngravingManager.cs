@@ -28,26 +28,34 @@ public class EngravingManager : MonoBehaviour
 
     void Awake() => LoadFromPrefs();
 
-    // ── 해금 시도 (사망 시 2% 확률) ─────────────────────────────────────────
-    public void TryUnlockOnDeath()
+    // ── 해금 시도 (사망 시 카르마 수치 기반 확률) ───────────────────────────
+    /// <summary>
+    /// 사망 시 호출. karma(0~100)를 확률(0~100%)로 환산해 각인 해금을 시도.
+    /// 예: karma=70 → 70% 확률로 미해금·중복되지 않는 각인 중 하나를 랜덤 추가.
+    /// </summary>
+    /// <returns>새로 해금된 EngravingData, 해금 없으면 null.</returns>
+    public EngravingData TryUnlockOnDeath(float karma)
     {
-        if (_unlocked.Count >= MAX_ENGRAVINGS) return;
-        if (engravingPool == null || engravingPool.Length == 0) return;
-        if (Random.value > 0.02f) return;           // 2% 확률
+        if (_unlocked.Count >= MAX_ENGRAVINGS) return null;
+        if (engravingPool == null || engravingPool.Length == 0) return null;
 
-        // 아직 해금되지 않은 각인 목록
+        float chance = Mathf.Clamp01(karma / 100f);
+        if (Random.value > chance) return null;
+
+        // 이미 해금된 각인을 제외한 목록 (중복 방지)
         var available = new List<EngravingData>();
         foreach (var e in engravingPool)
             if (e != null && !_unlocked.Contains(e))
                 available.Add(e);
 
-        if (available.Count == 0) return;
+        if (available.Count == 0) return null;
 
         var chosen = available[Random.Range(0, available.Count)];
         _unlocked.Add(chosen);
         SaveToPrefs();
         OnEngravingsChanged?.Invoke();
-        Debug.Log($"[각인] 새 각인 해금: {chosen.engravingName}");
+        Debug.Log($"[각인] 새 각인 해금: {chosen.engravingName} (카르마 {karma:F1}%, 확률 {chance * 100:F1}%)");
+        return chosen;
     }
 
     // ── 게임 시작 시 모든 각인 적용 ─────────────────────────────────────────
@@ -137,5 +145,35 @@ public class EngravingManager : MonoBehaviour
         bool removed = _unlocked.Remove(data);
         if (removed) { SaveToPrefs(); OnEngravingsChanged?.Invoke(); }
         return removed;
+    }
+
+    // ── 각인 제거 비용 및 골드 소모 제거 ────────────────────────────────────
+    /// <summary>
+    /// 각인 제거 비용 반환. 이력에 저장된 제거 횟수에 따라 1000→2000→4000→...
+    /// </summary>
+    public int GetRemoveCost()
+    {
+        int count = GameManager.Instance?.History?.EngravingRemoveCount ?? 0;
+        // 최대 2^20 = 1,048,576,000G 을 상한으로 오버플로우 방지
+        int shift = Mathf.Min(count, 20);
+        return 1000 * (1 << shift);
+    }
+
+    /// <summary>
+    /// 골드를 소모해 각인 제거. 성공 시 이력에 제거 횟수 기록.
+    /// </summary>
+    public bool TryRemoveEngraving(EngravingData data)
+    {
+        if (!_unlocked.Contains(data)) return false;
+        int cost = GetRemoveCost();
+        var player = GameManager.Instance?.Player;
+        if (player == null || !player.SpendGold(cost)) return false;
+
+        _unlocked.Remove(data);
+        GameManager.Instance.History.RecordEngravingRemove();
+        SaveToPrefs();
+        OnEngravingsChanged?.Invoke();
+        Debug.Log($"[각인] '{data.engravingName}' 제거 완료 (비용 {cost}G)");
+        return true;
     }
 }
