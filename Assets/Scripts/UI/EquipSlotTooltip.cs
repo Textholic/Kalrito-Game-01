@@ -22,10 +22,11 @@ public class EquipSlotTooltip : MonoBehaviour, IPointerEnterHandler, IPointerExi
             sb.AppendLine($"<color=#CCBBDD>{eq.description}</color>");
 
         var parts = new List<string>();
-        if (eq.attackMod  != 0) parts.Add($"<color=#FFAA44>ATK {(eq.attackMod  > 0 ? "+" : "")}{eq.attackMod}</color>");
-        if (eq.defenseMod != 0) parts.Add($"<color=#88AAFF>DEF {(eq.defenseMod > 0 ? "+" : "")}{eq.defenseMod}</color>");
-        if (eq.maxHpMod   != 0) parts.Add($"<color=#FF8888>MaxHP {(eq.maxHpMod   > 0 ? "+" : "")}{eq.maxHpMod}</color>");
-        if (eq.healMod    != 0) parts.Add($"<color=#66FF88>회복 {(eq.healMod    > 0 ? "+" : "")}{eq.healMod}</color>");
+        if (eq.attackMod    != 0)  parts.Add($"<color=#FFAA44>ATK {(eq.attackMod    > 0 ? "+" : "")}{eq.attackMod}</color>");
+        if (eq.defenseMod   != 0)  parts.Add($"<color=#88AAFF>DEF {(eq.defenseMod   > 0 ? "+" : "")}{eq.defenseMod}</color>");
+        if (eq.defChanceMod != 0f) parts.Add($"<color=#AADDFF>방어확률 {(eq.defChanceMod > 0 ? "+" : "")}{Mathf.RoundToInt(eq.defChanceMod * 100)}%</color>");
+        if (eq.maxHpMod     != 0)  parts.Add($"<color=#FF8888>MaxHP {(eq.maxHpMod     > 0 ? "+" : "")}{eq.maxHpMod}</color>");
+        if (eq.healMod      != 0)  parts.Add($"<color=#66FF88>회복 {(eq.healMod      > 0 ? "+" : "")}{eq.healMod}</color>");
 
         if (parts.Count > 0)
             sb.AppendLine(string.Join("  │  ", parts));

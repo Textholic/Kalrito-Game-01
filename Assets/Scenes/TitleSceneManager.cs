@@ -18,7 +18,33 @@ public class TitleSceneManager : MonoBehaviour
         return sys ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
     }
 
+    // ── ESC 팝업 ───────────────────────────────────────────────────
+    private bool       _isQuitPopupOpen  = false;
+    private GameObject _quitPopupOverlay = null;
+
     void Start() => SetupTitleUI();
+
+    void Update()
+    {
+        if (!Input.GetKeyDown(KeyCode.Escape)) return;
+        if (_isQuitPopupOpen)
+        {
+            if (_quitPopupOverlay != null) { Destroy(_quitPopupOverlay); _quitPopupOverlay = null; }
+            _isQuitPopupOpen = false;
+        }
+        else
+        {
+            _isQuitPopupOpen = true;
+            var canvas = FindAnyObjectByType<Canvas>();
+            if (canvas != null)
+            {
+                _quitPopupOverlay = EscPopupHelper.ShowPopup(canvas, GetFont(),
+                    "데스크톱으로 돌아가시겠습니까?",
+                    onYes: () => { _isQuitPopupOpen = false; _quitPopupOverlay = null; Application.Quit(); },
+                    onNo:  () => { _isQuitPopupOpen = false; _quitPopupOverlay = null; });
+            }
+        }
+    }
 
     // =====================================================================
     private void SetupTitleUI()

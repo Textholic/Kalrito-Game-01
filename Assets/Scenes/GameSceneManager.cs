@@ -103,6 +103,8 @@ public class GameSceneManager : MonoBehaviour
         [Range(0.1f, 10f)] public float atkScale = 1f;
         [Tooltip("경험치 배율 (기본 1.0)")]
         [Range(0.1f, 10f)] public float expScale = 1f;
+        [Tooltip("방어력 배율 — 방어력 = floor(층수 × 이 값), 30% 확률로 피해 경감 (기본 0 = 무방어)")]
+        [Range(0f, 5f)] public float defScale = 0f;
         [Tooltip("보스 전용 BGM (isBoss=true & bgmBoss 미설정 시 대체로 사용)")]
         public AudioClip bossBattleBgm;
     }
@@ -117,7 +119,7 @@ public class GameSceneManager : MonoBehaviour
         public string      description; // EnemySlot.description에서 복사
         public bool        isBoss;      // EnemySlot.isBoss에서 복사
         public Vector2Int  pos;
-        public int         hp, maxHp, attack, exp;
+        public int         hp, maxHp, attack, defense, exp;
         public int         typeIndex = -1;  // enemySlots 인덱스 (-1 = 플레이어)
         public GameObject  go;
         public bool        isAggro; // 한 번 발견하면 시야 밖에서도 추적
@@ -183,6 +185,11 @@ public class GameSceneManager : MonoBehaviour
     private GameObject _inventoryPanel;
     private GameObject _equipmentPanel;
 
+    // ── 미니맵 오버레이 ─────────────────────────────────────────────────────
+    private GameObject _minimapOverlay;
+    private Texture2D  _minimapTex;
+    private bool       _minimapOpen = false;
+
     // ── 아이템 상자 시스템 ─────────────────────────────────────────────────
     public class TreasureChest
     {
@@ -201,10 +208,11 @@ public class GameSceneManager : MonoBehaviour
     private GameObject _chestChoicePanel;
 
     // 플레이어 스탯 (GameSceneManager 내부 추적용) — 장비 누적
-    private int _equipAtk = 0;
-    private int _equipDef = 0;
-    private int _equipMaxHp = 0;
-    private int _equipHeal  = 0;
+    private int   _equipAtk      = 0;
+    private int   _equipDef      = 0;
+    private float _defChance     = 0f;  // 방어 성공 확률 (0.0~1.0)
+    private int   _equipMaxHp    = 0;
+    private int   _equipHeal     = 0;
     // 보물상자에서 획득한 장비 목록 (층 이동 후에도 유지) — FIFO 최대 4개
     private readonly List<EquipmentItemDef>  _chestEquipList    = new List<EquipmentItemDef>();
     private const int EQUIP_INV_MAX = 4;
@@ -213,10 +221,14 @@ public class GameSceneManager : MonoBehaviour
     // 인덱스: col + row * _mainInvCols
     private ConsumableItemDef[] _mainInvGrid = new ConsumableItemDef[15]; // 초기 5×3
     private int _mainInvCols = 5;
-    private int _mainInvRows = 3;
+    private int _mainInvRows = 2;
 
-    // ── 플레이어 레벨 (인벤토리 확장 기준) ───────────────────────────────────
+    // ── 플레이어 레벨 ───────────────────────────────────────────────────────
     private int _playerLevel = 1;
+
+    // ── ESC 종료 팝업 ──────────────────────────────────────────────────────
+    private bool        _isQuitPopupOpen  = false;
+    private GameObject  _quitPopupOverlay = null;
 
     // ── UIKit 테마 ─────────────────────────────────────────────────────────
     private UIKitTheme _theme;
@@ -251,6 +263,12 @@ public class GameSceneManager : MonoBehaviour
     private Color _currentWallDimColor  = new Color(0.18f, 0.15f, 0.12f);
 
     private bool          isProcessingTurn = false;
+
+    // ── 방향키 홈드 연속이동 ─────────────────────────────────────
+    private Vector2Int _holdDir            = Vector2Int.zero;
+    private float      _holdTimer          = 0f;
+    private const float HoldInitDelay      = 0.40f;  // 첫 입력 후 반복 시작까지 대기 시간(s)
+    private const float HoldRepeatInterval = 0.18f;  // 이후 반복 간격(s)
     private Queue<string> gameLogs = new Queue<string>();
 
     // ── 사망 통계 추적 ──────────────────────────────────────────────────────
@@ -310,13 +328,46 @@ public class GameSceneManager : MonoBehaviour
         // 패널 토글 키 (항상 처리)
         if (Input.GetKeyDown(KeyCode.I)) ToggleInventory();
         else if (Input.GetKeyDown(KeyCode.E)) ToggleEquipment();
+        else if (Input.GetKeyDown(KeyCode.Tab)) ToggleMinimap();
         else if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (_shopPanel        != null && _shopPanel.activeSelf)       { _shopPanel.SetActive(false); }
+            if (_minimapOpen)  { CloseMinimap(); }
+            else if (_shopPanel        != null && _shopPanel.activeSelf)        { _shopPanel.SetActive(false); }
+            else if (_chestChoicePanel != null && _chestChoicePanel.activeSelf) { Destroy(_chestChoicePanel); _chestChoicePanel = null; }
             else if (_inventoryPanel != null && _inventoryPanel.activeSelf) ToggleInventory();
             else if (_equipmentPanel != null && _equipmentPanel.activeSelf) ToggleEquipment();
+            else if (_isQuitPopupOpen)
+            {
+                // ESC 재입력으로 팝업 닫기
+                if (_quitPopupOverlay != null) { Destroy(_quitPopupOverlay); _quitPopupOverlay = null; }
+                _isQuitPopupOpen = false;
+            }
+            else
+            {
+                // 게임 종료 확인 팝업
+                _isQuitPopupOpen = true;
+                var canvas = FindAnyObjectByType<Canvas>();
+                if (canvas != null)
+                {
+                    _quitPopupOverlay = EscPopupHelper.ShowPopup(canvas, korFont,
+                        "게임을 종료하시겠습니까?",
+                        onYes: () =>
+                        {
+                            _isQuitPopupOpen  = false;
+                            _quitPopupOverlay = null;
+                            if (GameManager.Instance != null) GameManager.Instance.GoToLobby();
+                            else UnityEngine.SceneManagement.SceneManager.LoadScene("GameOptionsScene");
+                        },
+                        onNo: () =>
+                        {
+                            _isQuitPopupOpen  = false;
+                            _quitPopupOverlay = null;
+                        });
+                }
+            }
         }
         if (isProcessingTurn) return;
+        if (_isQuitPopupOpen)  return;  // 팝업 표시 중 게임 입력 차단
         HandleInput();
         FollowCamera();
     }
@@ -1647,15 +1698,18 @@ public class GameSceneManager : MonoBehaviour
             int eHp, eAtk, eExp;
             Sprite eSprRight, eSprLeft; Color eColor;
 
+            // 각 적의 스탯 기준 레벨: 플레이어 레벨 ±1 범위에서 무작위 결정
+            int eLevel = Mathf.Max(1, _playerLevel + Random.Range(-1, 2));
+
             if (typeIdx >= 0)
             {
                 var slot  = enemySlots[typeIdx];
                 eName     = string.IsNullOrEmpty(slot.name) ? $"몬스터{typeIdx+1}" : slot.name;
                 eDesc     = slot.description ?? "";
                 eIsBoss   = slot.isBoss;
-                eHp       = Mathf.RoundToInt((15 + currentLevel * 8)  * slot.hpScale);
-                eAtk      = Mathf.RoundToInt((3  + currentLevel)      * slot.atkScale);
-                eExp      = Mathf.RoundToInt((5  + currentLevel)      * slot.expScale);
+                eHp       = Mathf.RoundToInt((15 + eLevel * 8)  * slot.hpScale);
+                eAtk      = Mathf.RoundToInt((3  + eLevel)      * slot.atkScale);
+                eExp      = Mathf.RoundToInt((5  + eLevel)      * slot.expScale);
                 eSprRight = slot.spriteRight;
                 eSprLeft  = slot.spriteLeft;
                 eColor    = slot.color;
@@ -1663,8 +1717,8 @@ public class GameSceneManager : MonoBehaviour
             else
             {
                 eName = "몬스터"; eDesc = ""; eIsBoss = false;
-                eHp   = 15 + currentLevel * 8;
-                eAtk  = 3  + currentLevel; eExp = 5 + currentLevel;
+                eHp   = 15 + eLevel * 8;
+                eAtk  = 3  + eLevel; eExp = 5 + eLevel;
                 eSprRight = null; eSprLeft = null;
                 eColor    = new Color(1f, 0.4f, 0.4f);
             }
@@ -1672,6 +1726,7 @@ public class GameSceneManager : MonoBehaviour
             var e = new Entity(eName, eHp, eAtk, eExp, typeIdx);
             e.description = eDesc;
             e.isBoss      = eIsBoss;
+            e.defense     = (typeIdx >= 0) ? Mathf.RoundToInt(eLevel * enemySlots[typeIdx].defScale) : 0;
             // 보스는 보스방 중앙에, 일반 몬스터는 랜덤 빈 바닥에 배치
             if (eIsBoss && _bossRoomRect.HasValue)
                 e.pos = RoomCenter(_bossRoomRect.Value);
@@ -1799,18 +1854,47 @@ public class GameSceneManager : MonoBehaviour
         // 물약 사용 (1 키)
         if (Input.GetKeyDown(KeyCode.Alpha1)) { UsePotion(); return; }
 
-        Vector2Int move=Vector2Int.zero;
-        if      (Input.GetKeyDown(KeyCode.W)||Input.GetKeyDown(KeyCode.UpArrow))    move=Vector2Int.up;
-        else if (Input.GetKeyDown(KeyCode.S)||Input.GetKeyDown(KeyCode.DownArrow))  move=Vector2Int.down;
-        else if (Input.GetKeyDown(KeyCode.A)||Input.GetKeyDown(KeyCode.LeftArrow))  move=Vector2Int.left;
-        else if (Input.GetKeyDown(KeyCode.D)||Input.GetKeyDown(KeyCode.RightArrow)) move=Vector2Int.right;
+        // 방향 교체 또는 키 해제 시 타이머 리셋
+        Vector2Int move = Vector2Int.zero;
+        bool isKeyDown  = false;
 
-        if (move!=Vector2Int.zero&&ProcessPlayerTurn(move))
+        if      (Input.GetKeyDown(KeyCode.W)||Input.GetKeyDown(KeyCode.UpArrow))    { move=Vector2Int.up;    isKeyDown=true; }
+        else if (Input.GetKeyDown(KeyCode.S)||Input.GetKeyDown(KeyCode.DownArrow))  { move=Vector2Int.down;  isKeyDown=true; }
+        else if (Input.GetKeyDown(KeyCode.A)||Input.GetKeyDown(KeyCode.LeftArrow))  { move=Vector2Int.left;  isKeyDown=true; }
+        else if (Input.GetKeyDown(KeyCode.D)||Input.GetKeyDown(KeyCode.RightArrow)) { move=Vector2Int.right; isKeyDown=true; }
+        else
+        {
+            if      (Input.GetKey(KeyCode.W)||Input.GetKey(KeyCode.UpArrow))    move=Vector2Int.up;
+            else if (Input.GetKey(KeyCode.S)||Input.GetKey(KeyCode.DownArrow))  move=Vector2Int.down;
+            else if (Input.GetKey(KeyCode.A)||Input.GetKey(KeyCode.LeftArrow))  move=Vector2Int.left;
+            else if (Input.GetKey(KeyCode.D)||Input.GetKey(KeyCode.RightArrow)) move=Vector2Int.right;
+        }
+
+        if (move != _holdDir) { _holdDir = move; _holdTimer = 0f; }
+
+        bool doMove = false;
+        if (isKeyDown)
+        {
+            doMove     = true;
+            _holdTimer = 0f;
+        }
+        else if (move != Vector2Int.zero)
+        {
+            _holdTimer += Time.deltaTime;
+            if (_holdTimer >= HoldInitDelay)
+            {
+                doMove     = true;
+                _holdTimer -= HoldRepeatInterval;
+            }
+        }
+
+        if (doMove&&move!=Vector2Int.zero&&ProcessPlayerTurn(move))
         {
             TriggerPlayerWalkAnim(move);
             isProcessingTurn=true;
             ProcessEnemyTurn();
             UpdateVisibility();
+            if (_minimapOpen && _minimapTex != null) RenderMinimapTexture(4);
             UpdateUI();
             if (player.hp > 0) isProcessingTurn=false;
         }
@@ -1852,7 +1936,17 @@ public class GameSceneManager : MonoBehaviour
         var target=GetEnemyAt(np.x,np.y);
         if (target!=null)
         {
-            int dmg=Mathf.Max(1,player.attack+Random.Range(-3,4));
+            int rawDmg = player.attack + Random.Range(-3, 4);
+            int dmg;
+            if (target.defense > 0 && Random.value < 0.30f)
+            {
+                dmg = Mathf.Max(1, rawDmg - target.defense);
+                AddLog($"<color=#88AAFF>{target.name}이(가) 방어! ({rawDmg}-{target.defense}={dmg})</color>");
+            }
+            else
+            {
+                dmg = Mathf.Max(1, rawDmg);
+            }
             target.hp-=dmg;
             PlaySFX(sfxHit, Random.Range(0.9f,1.1f));
             AddLog($"<color=#FFCC44>{target.name}에게 <b>{dmg}</b> 데미지!</color>");
@@ -1980,27 +2074,167 @@ public class GameSceneManager : MonoBehaviour
 
         int gained = newLevel - _playerLevel;
         _playerLevel = newLevel;
-        player.attack += 2 * gained;
+        player.attack += 1 * gained;
         player.maxHp  += 10 * gained;
         player.hp     = Mathf.Min(player.hp + 10 * gained, player.maxHp);
-        AddLog($"<color=#AAFFFF>레벨 업! (Lv.{_playerLevel}) 공격력 +{2*gained}, 최대 HP +{10*gained}</color>");
+        AddLog($"<color=#AAFFFF>레벨 업! (Lv.{_playerLevel}) 공격력 +{1*gained}, 최대 HP +{10*gained}</color>");
 
-        // 5 레벨마다 인벤토리 확장 (+1열 +1행)
-        if (_playerLevel % 5 == 0)
+    }
+
+    // ====================================================================
+    // 미니맵 오버레이 (Tab = 열기/닫기, ESC = 닫기)
+    // explored[] 기반으로 타일 색상을 Texture2D에 그려 RawImage로 표시
+    // ====================================================================
+    private void ToggleMinimap()
+    {
+        if (_minimapOpen) CloseMinimap();
+        else              OpenMinimap();
+    }
+
+    private void OpenMinimap()
+    {
+        if (map == null || player == null) return;
+        var canvas = FindAnyObjectByType<Canvas>();
+        if (canvas == null) return;
+
+        // 전체화면 반투명 배경
+        _minimapOverlay = MakePanel(canvas.transform, "MinimapOverlay",
+            Vector2.zero, Vector2.one,
+            new Vector2(0.5f, 0.5f),
+            Vector2.zero, Vector2.zero,
+            new Color(0f, 0f, 0f, 0.78f));
+        _minimapOverlay.transform.SetAsLastSibling();
+
+        // 한 타일 = 4×4 픽셀
+        const int scale = 4;
+        int tw = MapWidth  * scale;   // 256
+        int th = MapHeight * scale;   // 192
+        _minimapTex = new Texture2D(tw, th, TextureFormat.RGBA32, false);
+        _minimapTex.filterMode = FilterMode.Point;
+        RenderMinimapTexture(scale);
+
+        var rawGo = new GameObject("MinimapRawImage");
+        rawGo.transform.SetParent(_minimapOverlay.transform, false);
+        var raw = rawGo.AddComponent<RawImage>();
+        raw.texture = _minimapTex;
+        var rt = rawGo.GetComponent<RectTransform>();
+        rt.anchorMin        = new Vector2(0.5f, 0.5f);
+        rt.anchorMax        = new Vector2(0.5f, 0.5f);
+        rt.pivot            = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta        = new Vector2(tw * 2f, th * 2f); // 2배 확대 표시
+
+        // 제목 텍스트
+        var titleGo = new GameObject("MinimapTitle");
+        titleGo.transform.SetParent(_minimapOverlay.transform, false);
+        var title = titleGo.AddComponent<Text>();
+        title.font      = korFont != null ? korFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        title.fontSize  = 24;
+        title.color     = new Color(1f, 0.93f, 0.6f);
+        title.alignment = TextAnchor.MiddleCenter;
+        title.text      = "미니맵  [ Tab / ESC : 닫기 ]";
+        var titleRt = titleGo.GetComponent<RectTransform>();
+        titleRt.anchorMin        = new Vector2(0.5f, 1f);
+        titleRt.anchorMax        = new Vector2(0.5f, 1f);
+        titleRt.pivot            = new Vector2(0.5f, 1f);
+        titleRt.anchoredPosition = new Vector2(0f, -16f);
+        titleRt.sizeDelta        = new Vector2(500f, 40f);
+
+        _minimapOpen = true;
+    }
+
+    private void RenderMinimapTexture(int scale)
+    {
+        // 전체 투명 초기화
+        int tw = MapWidth * scale;
+        int th = MapHeight * scale;
+        var transparent = new Color(0f, 0f, 0f, 0f);
+        Color[] buf = new Color[tw * th];
+        for (int i = 0; i < buf.Length; i++) buf[i] = transparent;
+        _minimapTex.SetPixels(buf);
+
+        // 타일별 색상 정의
+        var floorVis  = new Color(0.75f, 0.68f, 0.50f, 1f);
+        var floorDim  = new Color(0.28f, 0.24f, 0.18f, 1f);
+        var wallVis   = new Color(0.50f, 0.44f, 0.38f, 1f);
+        var wallDim   = new Color(0.16f, 0.14f, 0.12f, 1f);
+        var stairCol  = new Color(0.80f, 0.30f, 1.00f, 1f);
+        var playerCol = Color.yellow;
+
+        for (int x = 0; x < MapWidth; x++)
         {
-            int oldCols = _mainInvCols;
-            int oldRows = _mainInvRows;
-            _mainInvCols++;
-            _mainInvRows++;
-            var oldGrid = _mainInvGrid;
-            _mainInvGrid = new ConsumableItemDef[_mainInvCols * _mainInvRows];
-            for (int r = 0; r < oldRows; r++)
-                for (int c = 0; c < oldCols; c++)
-                    _mainInvGrid[c + r * _mainInvCols] = oldGrid[c + r * oldCols];
-            // 패널 재빌드
-            if (_inventoryPanel != null) { Destroy(_inventoryPanel); _inventoryPanel = null; }
-            AddLog($"<color=#FFD700>인벤토리 확장! {_mainInvCols}×{_mainInvRows}</color>");
+            for (int y = 0; y < MapHeight; y++)
+            {
+                if (!explored[x, y]) continue;
+
+                Color col;
+                if (x == player.pos.x && y == player.pos.y)
+                    col = playerCol;
+                else if (map[x, y] == '>' || map[x, y] == '<')
+                    col = stairCol;
+                else if (map[x, y] == '#')
+                    col = visible[x, y] ? wallVis : wallDim;
+                else
+                    col = visible[x, y] ? floorVis : floorDim;
+
+                // scale×scale 블록으로 채우기
+                for (int px = 0; px < scale; px++)
+                    for (int py = 0; py < scale; py++)
+                        _minimapTex.SetPixel(x * scale + px, y * scale + py, col);
+            }
         }
+        _minimapTex.Apply();
+    }
+
+    private void CloseMinimap()
+    {
+        if (_minimapOverlay != null) { Destroy(_minimapOverlay); _minimapOverlay = null; }
+        if (_minimapTex     != null) { Destroy(_minimapTex);     _minimapTex     = null; }
+        _minimapOpen = false;
+    }
+
+    // ====================================================================
+    // BFS 경로탐색: 적(e)에서 goal까지의 최단 경로 첫 번째 방향 반환.
+    // 벽('#')을 우회하며, 보스는 _bossRoomRect 내부로만 이동
+    // (단, 목표 타일 자체는 예외로 허용).
+    // 경로가 없으면 Vector2Int.zero 반환.
+    // ====================================================================
+    private Vector2Int BFSNextStep(Entity e, Vector2Int goal)
+    {
+        var start = e.pos;
+        if (start == goal) return Vector2Int.zero;
+
+        var queue    = new Queue<Vector2Int>();
+        var cameFrom = new Dictionary<Vector2Int, Vector2Int>();
+        queue.Enqueue(start);
+        cameFrom[start] = start;
+
+        var dirs = new[] { Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down };
+
+        while (queue.Count > 0)
+        {
+            var cur = queue.Dequeue();
+            if (cur == goal)
+            {
+                // 경로를 역추적하여 start 바로 다음 한 칸을 반환
+                var step = cur;
+                while (cameFrom[step] != start) step = cameFrom[step];
+                return step - start;
+            }
+            foreach (var d in dirs)
+            {
+                var next = cur + d;
+                if (cameFrom.ContainsKey(next)) continue;
+                if (GetT(next.x, next.y) == '#') continue;
+                // 보스는 보스방 경계 내부만 이동 가능 (목표 타일은 예외)
+                // 귀환 중(목표=방 중앙)일 때는 보스방 내부라면 항상 통과
+                if (e.isBoss && _bossRoomRect.HasValue && next != goal
+                    && !_bossRoomRect.Value.Contains(next)) continue;
+                cameFrom[next] = cur;
+                queue.Enqueue(next);
+            }
+        }
+        return Vector2Int.zero; // 경로 없음
     }
 
     // ====================================================================
@@ -2018,19 +2252,58 @@ public class GameSceneManager : MonoBehaviour
             // 너무 멀면 추적 포기 (어그로 해제)
             if (Vector2Int.Distance(e.pos,player.pos)>16) { e.isAggro=false; continue; }
 
-            var diff=player.pos-e.pos;
-            var mv=Vector2Int.zero;
-            if (Mathf.Abs(diff.x)>=Mathf.Abs(diff.y)) mv.x=(int)Mathf.Sign(diff.x);
-            else                                        mv.y=(int)Mathf.Sign(diff.y);
+            // ── 보스 귀환 처리 ─────────────────────────────────────────────
+            // 보스가 어그로 상태이지만 플레이어가 시야 밖이면 방 중앙으로 귀환
+            if (e.isBoss && _bossRoomRect.HasValue && !IsVis(e.pos.x, e.pos.y))
+            {
+                var center = RoomCenter(_bossRoomRect.Value);
+                if (e.pos == center)
+                {
+                    // 방 중앙 도달 → 어그로 해제
+                    e.isAggro = false;
+                    continue;
+                }
+                var retMv = BFSNextStep(e, center);
+                if (retMv != Vector2Int.zero)
+                {
+                    var retNp = e.pos + retMv;
+                    if (GetT(retNp.x, retNp.y) != '#' && !IsEntityAt(retNp))
+                    {
+                        e.pos = retNp;
+                        if (e.go != null)
+                        {
+                            e.go.transform.position = TileWorldPos(e.pos.x, e.pos.y);
+                            var retSr = e.go.GetComponent<SpriteRenderer>();
+                            retSr.sortingOrder = EntitySortOrder(e.pos.y);
+                            if (retMv.x != 0) { e.facingRight = retMv.x > 0; UpdateEnemyFacing(e, retSr); }
+                        }
+                    }
+                }
+                continue; // 귀환 중에는 플레이어 추적 건너뜀
+            }
+
+            // BFS로 벽을 우회하는 최단 경로 첫 번째 방향을 구한다
+            var mv = BFSNextStep(e, player.pos);
+            if (mv == Vector2Int.zero) continue; // 경로 없음 (완전 차단)
 
             var np=e.pos+mv;
             if (np==player.pos)
             {
-                int dmg=Mathf.Max(1,e.attack+Random.Range(-2,3)-_equipDef);
+                int rawDmg = e.attack + Random.Range(-2, 3);
+                int dmg;
+                if (_equipDef > 0 && _defChance > 0f && Random.value < _defChance)
+                {
+                    dmg = Mathf.Max(1, rawDmg - _equipDef);
+                    PlaySFX(sfxHit, 0.7f);
+                    AddLog($"<color=#88AAFF>방어 성공! ({rawDmg}-{_equipDef}={dmg}) <color=#FF6666>{e.name}에게 <b>{dmg}</b> 데미지를 받았다!</color></color>");
+                }
+                else
+                {
+                    dmg = Mathf.Max(1, rawDmg);
+                    PlaySFX(sfxHit, 0.7f);
+                    AddLog($"<color=#FF6666>{e.name}에게 <b>{dmg}</b> 데미지를 받았다!</color>");
+                }
                 player.hp-=dmg;
-                PlaySFX(sfxHit, 0.7f);
-                string defInfo = _equipDef > 0 ? $" (방어 -{_equipDef})" : "";
-                AddLog($"<color=#FF6666>{e.name}에게 <b>{dmg}</b> 데미지를 받았다{defInfo}!</color>");
             }
             else if (GetT(np.x,np.y)!='#' && !IsEntityAt(np) &&
                      !(e.isBoss && _bossRoomRect.HasValue && !_bossRoomRect.Value.Contains(np)))
@@ -2271,8 +2544,12 @@ public class GameSceneManager : MonoBehaviour
             hpDisplay.text=$"<color=#{ColorUtility.ToHtmlStringRGB(hc)}>HP {player.hp}/{player.maxHp}</color>   " +
                             $"<color=#FFD700>G {playerGold}</color>";
         if (statusDisplay!=null)
+        {
+            float karma = GameManager.Instance?.Player?.Karma ?? 0f;
             statusDisplay.text=$"<color=#FFD966>{currentLevel}F</color>  ATK {player.attack}" +
-                                $"  EXP {playerExp}  적 {enemies.Count}";
+                                $"  EXP {playerExp}  적 {enemies.Count}" +
+                                $"  <color=#CC99FF>카르마 {karma:F1}%</color>";
+        }
         UpdatePotionCountUI();
     }
 
@@ -2689,6 +2966,11 @@ public class GameSceneManager : MonoBehaviour
         if (item.defenseBonus > 0)
         {
             sb.AppendLine($"<color=#88AAFF>+ 방어력  +{item.defenseBonus}</color>");
+            hasEffect = true;
+        }
+        if (item.defChanceBonus > 0f)
+        {
+            sb.AppendLine($"<color=#AADDFF>+ 방어 확률  +{Mathf.RoundToInt(item.defChanceBonus * 100)}%</color>");
             hasEffect = true;
         }
         if (item.goldGain > 0)
@@ -3241,6 +3523,9 @@ public class GameSceneManager : MonoBehaviour
         // 방어력 (내부 추적)
         if (c.defenseBonus > 0)
             _equipDef += c.defenseBonus;
+        // 방어 확률
+        if (c.defChanceBonus > 0f)
+            _defChance = Mathf.Clamp01(_defChance + c.defChanceBonus);
         // 상태이상 해제
         if (c.cureEffect != StatusEffectType.None)
         {
@@ -3259,34 +3544,72 @@ public class GameSceneManager : MonoBehaviour
 
     private void ApplyEquipmentDef(EquipmentItemDef e)
     {
-        // FIFO: 8개 가득 찼으면 가장 오래된 장비 제거
+        // FIFO: 가득 찼으면 가장 오래된 장비 제거
         if (_chestEquipList.Count >= EQUIP_INV_MAX)
         {
             var oldest = _chestEquipList[0];
-            player.attack  -= oldest.attackMod;
-            _equipDef      -= oldest.defenseMod;
-            player.maxHp   -= oldest.maxHpMod;
-            player.hp       = Mathf.Clamp(player.hp, 1, player.maxHp);
-            _equipHeal     -= oldest.healMod;
             _chestEquipList.RemoveAt(0);
             AddLog($"<color=#DDAAFF>[{oldest.displayName}] 이(가) 장비 목록에서 밀려났습니다.</color>");
         }
 
-        // 스탯 즉시 적용
-        player.attack  += e.attackMod;
-        _equipDef      += e.defenseMod;
-        player.maxHp   += e.maxHpMod;
-        player.hp       = Mathf.Clamp(player.hp, 1, player.maxHp);
-        _equipHeal     += e.healMod;
-
         // 목록에 추가 → 패널에 표시
         _chestEquipList.Add(e);
+
+        // 모든 스탯: 동일 능력치는 최고 버프 + 최저 디버프 기준으로 재계산
+        RecalcEquipCombatStats();
 
         GameManager.Instance?.History?.RecordItemObtained();
 
         // 장비 패널 갱신 (열려 있을 경우)
         if (_equipmentPanel != null && _equipmentPanel.activeSelf)
             RefreshEquipmentPanel();
+    }
+
+    // 장착된 모든 장비의 스탯을 재계산한다.
+    // 동일 종류 능력치는 (최고 버프) + (최저 디버프) 만 적용.
+    // 예: [+5, +3, -3] → 최고 버프 +5, 최저 디버프 -3 → 합계 +2
+    private void RecalcEquipCombatStats()
+    {
+        // ── 이전 장비 보정 제거 ────────────────────────────────────────────
+        player.attack -= _equipAtk;
+        player.maxHp  -= _equipMaxHp;
+        player.hp      = Mathf.Clamp(player.hp, 1, Mathf.Max(1, player.maxHp));
+
+        // ── 장비 목록 순회: 능력치별 최고 버프 / 최저 디버프 추출 ──────────
+        int   bestAtkBuff   = 0, worstAtkDebuff   = 0;
+        int   bestDefBuff   = 0, worstDefDebuff   = 0;
+        int   bestHpBuff    = 0, worstHpDebuff    = 0;
+        float bestDcBuff    = 0, worstDcDebuff    = 0;
+        int   bestHealBuff  = 0, worstHealDebuff  = 0;
+
+        foreach (var eq in _chestEquipList)
+        {
+            if      (eq.attackMod    > 0) bestAtkBuff    = Mathf.Max(bestAtkBuff,    eq.attackMod);
+            else if (eq.attackMod    < 0) worstAtkDebuff = Mathf.Min(worstAtkDebuff, eq.attackMod);
+
+            if      (eq.defenseMod   > 0) bestDefBuff    = Mathf.Max(bestDefBuff,    eq.defenseMod);
+            else if (eq.defenseMod   < 0) worstDefDebuff = Mathf.Min(worstDefDebuff, eq.defenseMod);
+
+            if      (eq.maxHpMod     > 0) bestHpBuff     = Mathf.Max(bestHpBuff,     eq.maxHpMod);
+            else if (eq.maxHpMod     < 0) worstHpDebuff  = Mathf.Min(worstHpDebuff,  eq.maxHpMod);
+
+            if      (eq.defChanceMod > 0) bestDcBuff     = Mathf.Max(bestDcBuff,     eq.defChanceMod);
+            else if (eq.defChanceMod < 0) worstDcDebuff  = Mathf.Min(worstDcDebuff,  eq.defChanceMod);
+
+            if      (eq.healMod      > 0) bestHealBuff   = Mathf.Max(bestHealBuff,   eq.healMod);
+            else if (eq.healMod      < 0) worstHealDebuff= Mathf.Min(worstHealDebuff, eq.healMod);
+        }
+
+        // ── 재계산 결과 저장 및 적용 ────────────────────────────────────────
+        _equipAtk   = bestAtkBuff  + worstAtkDebuff;
+        _equipDef   = bestDefBuff  + worstDefDebuff;
+        _equipMaxHp = bestHpBuff   + worstHpDebuff;
+        _defChance  = Mathf.Clamp01(bestDcBuff + worstDcDebuff);
+        _equipHeal  = bestHealBuff + worstHealDebuff;
+
+        player.attack  = Mathf.Max(0, player.attack + _equipAtk);
+        player.maxHp  += _equipMaxHp;
+        player.hp      = Mathf.Clamp(player.hp, 1, player.maxHp);
     }
 
 #if UNITY_EDITOR

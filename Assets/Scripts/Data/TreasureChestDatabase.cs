@@ -43,6 +43,10 @@ public class ConsumableItemDef
     [Tooltip("방어력 증가량 (0이면 없음)")]
     public int defenseBonus = 0;
 
+    [Tooltip("방어 확률 증가 (0.0~1.0, 0이면 없음). 예: 0.1 = +10%")]
+    [Range(0f, 1f)]
+    public float defChanceBonus = 0f;
+
     [Tooltip("해제할 상태이상 (None이면 무효)")]
     public StatusEffectType cureEffect = StatusEffectType.None;
 
@@ -77,6 +81,10 @@ public class EquipmentItemDef
 
     [Tooltip("방어력 보정 (+/-)")]
     public int defenseMod = 0;
+
+    [Tooltip("방어 확률 보정 (+/-). 예: 0.1 = +10%, -0.1 = -10%")]
+    [Range(-1f, 1f)]
+    public float defChanceMod = 0f;
 
     [Tooltip("최대 HP 보정 (+/-)")]
     public int maxHpMod = 0;

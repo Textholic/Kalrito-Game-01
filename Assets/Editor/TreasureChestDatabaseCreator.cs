@@ -103,18 +103,18 @@ public static class TreasureChestDatabaseCreator
         var equipments = new List<EquipmentItemDef>
         {
             // 순수 공격 장비 (버프)
-            new EquipmentItemDef { id="eq_sword_iron",    displayName="강철 검",       description="기본적인 강철 검. 공격력 +8",         icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Sword.png"), attackMod=8,   minFloor=1,  flavorText="단순함 속에 신뢰가 있다."  },
-            new EquipmentItemDef { id="eq_axe_war",       displayName="전쟁 도끼",     description="육중한 전쟁 도끼. 공격력 +15",         icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Axe.png"),   attackMod=15,  minFloor=3,  flavorText="내리치는 순간, 전쟁이 시작된다."  },
-            new EquipmentItemDef { id="eq_spear_sharp",   displayName="날카로운 창",   description="예리한 창끝. 공격력 +12.",             icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Spear.png"), attackMod=12,  minFloor=2,  flavorText="먼저 찌르는 자가 살아남는다."  },
-            new EquipmentItemDef { id="eq_staff_magic",   displayName="마법 지팡이",   description="마력이 깃든 지팡이. 공격력 +20",       icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Staff.png"), attackMod=20,  minFloor=5,  flavorText="마력은 의지를 따른다."  },
-            new EquipmentItemDef { id="eq_sword_flame",   displayName="화염 검",       description="불꽃이 타오르는 검. 공격력 +18",       icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Sword.png"), attackMod=18,  minFloor=4,  flavorText="검날에 깃든 불꽃은 꺼지지 않는다."  },
+            new EquipmentItemDef { id="eq_sword_iron",    displayName="강철 검",       description="기본적인 강철 검. 공격력 +4",         icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Sword.png"), attackMod=4,   minFloor=1,  flavorText="단순함 속에 신뢰가 있다."  },
+            new EquipmentItemDef { id="eq_axe_war",       displayName="전쟁 도끼",     description="육중한 전쟁 도끼. 공격력 +8",          icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Axe.png"),   attackMod=8,   minFloor=3,  flavorText="내리치는 순간, 전쟁이 시작된다."  },
+            new EquipmentItemDef { id="eq_spear_sharp",   displayName="날카로운 창",   description="예리한 창끝. 공격력 +6.",              icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Spear.png"), attackMod=6,   minFloor=2,  flavorText="먼저 찌르는 자가 살아남는다."  },
+            new EquipmentItemDef { id="eq_staff_magic",   displayName="마법 지팡이",   description="마력이 깃든 지팡이. 공격력 +10",       icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Staff.png"), attackMod=10,  minFloor=5,  flavorText="마력은 의지를 따른다."  },
+            new EquipmentItemDef { id="eq_sword_flame",   displayName="화염 검",       description="불꽃이 타오르는 검. 공격력 +9",        icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Sword.png"), attackMod=9,   minFloor=4,  flavorText="검날에 깃든 불꽃은 꺼지지 않는다."  },
 
             // 순수 방어 장비 (버프)
-            new EquipmentItemDef { id="eq_shield_wood",   displayName="나무 방패",      description="가벼운 나무 방패. 방어 +6",          icon=Spr(PIX+"Wood.png"),  defenseMod=6,   minFloor=1,  flavorText="부러져도 지키겠다는 마음은 남는다."  },
-            new EquipmentItemDef { id="eq_shield_iron",   displayName="철 방패",        description="단단한 철 방패. 방어 +14",           icon=Spr(PIX+"Iron.png"),  defenseMod=14,  minFloor=3,  flavorText="불 속에서 벼린 쇠, 쉽게 굽히지 않는다."  },
-            new EquipmentItemDef { id="eq_armor_leather",  displayName="가죽 갑옷",     description="기동성이 좋은 가죽 갑옷. 방어 +10", icon=Spr(PIX+"Sheep.png"), defenseMod=10,  minFloor=2,  flavorText="빠른 발이 최고의 방어다."  },
-            new EquipmentItemDef { id="eq_armor_plate",   displayName="판금 갑옷",      description="완전한 방어. 방어 +22",              icon=Spr(PIX+"Rock.png"),  defenseMod=22,  minFloor=6,  flavorText="무거울수록 더 안전하다."  },
-            new EquipmentItemDef { id="eq_ring_guard",    displayName="수호의 반지",    description="방어막이 깃든 반지. 방어 +8",        icon=Spr(PIX+"TheRing.png"), defenseMod=8,  minFloor=2,  flavorText="작은 반지 하나가 생사를 가른다."  },
+            new EquipmentItemDef { id="eq_shield_wood",   displayName="나무 방패",      description="가벼운 나무 방패. 방어 +3",          icon=Spr(PIX+"Wood.png"),  defenseMod=3,   minFloor=1,  flavorText="부러져도 지키겠다는 마음은 남는다."  },
+            new EquipmentItemDef { id="eq_shield_iron",   displayName="철 방패",        description="단단한 철 방패. 방어 +7",            icon=Spr(PIX+"Iron.png"),  defenseMod=7,   minFloor=3,  flavorText="불 속에서 벼린 쇠, 쉽게 굽히지 않는다."  },
+            new EquipmentItemDef { id="eq_armor_leather",  displayName="가죽 갑옷",     description="기동성이 좋은 가죽 갑옷. 방어 +5",  icon=Spr(PIX+"Sheep.png"), defenseMod=5,   minFloor=2,  flavorText="빠른 발이 최고의 방어다."  },
+            new EquipmentItemDef { id="eq_armor_plate",   displayName="판금 갑옷",      description="완전한 방어. 방어 +11",              icon=Spr(PIX+"Rock.png"),  defenseMod=11,  minFloor=6,  flavorText="무거울수록 더 안전하다."  },
+            new EquipmentItemDef { id="eq_ring_guard",    displayName="수호의 반지",    description="방어막이 깃든 반지. 방어 +4",        icon=Spr(PIX+"TheRing.png"), defenseMod=4,  minFloor=2,  flavorText="작은 반지 하나가 생사를 가른다."  },
 
             // HP 장비 (버프)
             new EquipmentItemDef { id="eq_amulet_heart",  displayName="심장 목걸이",   description="생명력이 넘친다. 최대HP +40",         icon=Spr(PIX+"Heart.png"),  maxHpMod=40,  minFloor=2,  flavorText="심장이 강한 자가 오래 산다."  },
@@ -122,27 +122,27 @@ public static class TreasureChestDatabaseCreator
             new EquipmentItemDef { id="eq_boots_oak",     displayName="참나무 장화",   description="든든한 발. 최대HP +30",              icon=Spr(PIX+"Wood.png"),   maxHpMod=30,  minFloor=1,  flavorText="대지를 밟는 발이 강할수록 몸도 강해진다."  },
 
             // 복합 버프 장비
-            new EquipmentItemDef { id="eq_sword_knight",  displayName="기사의 검",      description="전투 숙련자의 검. 공격 +10, 방어 +5",     icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Sword.png"), attackMod=10, defenseMod=5,  minFloor=3,  flavorText="기사의 명예가 검날에 새겨져 있다."  },
-            new EquipmentItemDef { id="eq_armor_hero",    displayName="영웅의 갑옷",    description="전설적인 갑옷. 방어 +15, 최대HP +30",       icon=Spr(PIX+"Castle.png"), defenseMod=15, maxHpMod=30,  minFloor=7,  flavorText="영웅은 갑옷을 입기 전부터 영웅이었다."  },
-            new EquipmentItemDef { id="eq_ring_power",    displayName="힘의 반지",      description="원초적인 힘. 공격 +12, 방어 +4",           icon=Spr(PIX+"TheRing.png"), attackMod=12, defenseMod=4, minFloor=4,  flavorText="힘은 손가락 끝에서도 나온다."  },
-            new EquipmentItemDef { id="eq_crown_king",    displayName="왕의 왕관",      description="절대 권력의 왕관. 공격 +20, 최대HP +50",    icon=Spr(PIX+"Crown.png"),   attackMod=20, maxHpMod=50,  minFloor=9,  flavorText="왕관을 쓰는 자, 그 무게를 견뎌야 한다."  },
+            new EquipmentItemDef { id="eq_sword_knight",  displayName="기사의 검",      description="전투 숙련자의 검. 공격 +5, 방어 +3",      icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Sword.png"), attackMod=5,  defenseMod=3,  minFloor=3,  flavorText="기사의 명예가 검날에 새겨져 있다."  },
+            new EquipmentItemDef { id="eq_armor_hero",    displayName="영웅의 갑옷",    description="전설적인 갑옷. 방어 +8, 최대HP +30",        icon=Spr(PIX+"Castle.png"), defenseMod=8,  maxHpMod=30,  minFloor=7,  flavorText="영웅은 갑옷을 입기 전부터 영웅이었다."  },
+            new EquipmentItemDef { id="eq_ring_power",    displayName="힘의 반지",      description="원초적인 힘. 공격 +6, 방어 +2",            icon=Spr(PIX+"TheRing.png"), attackMod=6,  defenseMod=2, minFloor=4,  flavorText="힘은 손가락 끝에서도 나온다."  },
+            new EquipmentItemDef { id="eq_crown_king",    displayName="왕의 왕관",      description="절대 권력의 왕관. 공격 +10, 최대HP +50",    icon=Spr(PIX+"Crown.png"),   attackMod=10, maxHpMod=50,  minFloor=9,  flavorText="왕관을 쓰는 자, 그 무게를 견뎌야 한다."  },
             new EquipmentItemDef { id="eq_staff_heal",    displayName="치유 지팡이",    description="상처를 낫게 한다. 회복량 +15, 최대HP +20",  icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Staff.png"), healMod=15, maxHpMod=20, minFloor=3,  flavorText="치유는 공격보다 강할 때가 있다."  },
 
             // 디버프 장비 (높은 버프 + 패널티)
-            new EquipmentItemDef { id="eq_axe_cursed",    displayName="저주받은 도끼",  description="엄청난 힘, 하지만 방어력이 낮아진다. 공격 +25, 방어 -10",  icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Axe.png"),  attackMod=25, defenseMod=-10, minFloor=5,  flavorText="저주받은 힘은 달콤하지만 위험하다."  },
-            new EquipmentItemDef { id="eq_armor_heavy",   displayName="중장 갑옷",      description="극한의 방어, 둔해진다. 방어 +30, 공격 -8",                  icon=Spr(PIX+"Iron.png"),   defenseMod=30, attackMod=-8,  minFloor=6,  flavorText="움직임을 포기하고 생존을 얻었다."  },
-            new EquipmentItemDef { id="eq_ring_doom",     displayName="파멸의 반지",    description="강력한 힘의 대가. 공격 +30, 최대HP -20",                     icon=Spr(PIX+"TheRing.png"), attackMod=30, maxHpMod=-20, minFloor=7,  flavorText="파멸의 힘, 그 대가는 고통이다."  },
-            new EquipmentItemDef { id="eq_staff_dark",    displayName="어둠의 지팡이",  description="어둠의 힘. 공격 +22, 방어 -6",                               icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Staff.png"), attackMod=22, defenseMod=-6, minFloor=6,  flavorText="어둠을 다루는 자는 어둠에 물든다."  },
-            new EquipmentItemDef { id="eq_helm_darkness", displayName="어둠의 투구",    description="시야가 좁아진다. 방어 +18, 공격 -5",                         icon=Spr(GOTH+"Skull.png"),   defenseMod=18, attackMod=-5,  minFloor=5,  flavorText="보이지 않아도 느낄 수 있다."  },
-            new EquipmentItemDef { id="eq_suit_glass",    displayName="유리 갑옷",      description="아름답지만 약하다. 공격 +15, 방어 -15, 최대HP +40",           icon=Spr(PIX+"Glass.png"),    attackMod=15, defenseMod=-15, maxHpMod=40, minFloor=6,  flavorText="아름다운 것은 언제나 취약하다."  },
+            new EquipmentItemDef { id="eq_axe_cursed",    displayName="저주받은 도끼",  description="엄청난 힘, 하지만 방어력이 낮아진다. 공격 +13, 방어 -5",  icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Axe.png"),  attackMod=13, defenseMod=-5,  minFloor=5,  flavorText="저주받은 힘은 달콤하지만 위험하다."  },
+            new EquipmentItemDef { id="eq_armor_heavy",   displayName="중장 갑옷",      description="극한의 방어, 둔해진다. 방어 +15, 공격 -4",                  icon=Spr(PIX+"Iron.png"),   defenseMod=15, attackMod=-4,  minFloor=6,  flavorText="움직임을 포기하고 생존을 얻었다."  },
+            new EquipmentItemDef { id="eq_ring_doom",     displayName="파멸의 반지",    description="강력한 힘의 대가. 공격 +15, 최대HP -20",                     icon=Spr(PIX+"TheRing.png"), attackMod=15, maxHpMod=-20, minFloor=7,  flavorText="파멸의 힘, 그 대가는 고통이다."  },
+            new EquipmentItemDef { id="eq_staff_dark",    displayName="어둠의 지팡이",  description="어둠의 힘. 공격 +11, 방어 -3",                               icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Staff.png"), attackMod=11, defenseMod=-3, minFloor=6,  flavorText="어둠을 다루는 자는 어둠에 물든다."  },
+            new EquipmentItemDef { id="eq_helm_darkness", displayName="어둠의 투구",    description="시야가 좁아진다. 방어 +9, 공격 -3",                          icon=Spr(GOTH+"Skull.png"),   defenseMod=9, attackMod=-3,  minFloor=5,  flavorText="보이지 않아도 느낄 수 있다."  },
+            new EquipmentItemDef { id="eq_suit_glass",    displayName="유리 갑옷",      description="아름답지만 약하다. 공격 +8, 방어 -8, 최대HP +40",             icon=Spr(PIX+"Glass.png"),    attackMod=8,  defenseMod=-8, maxHpMod=40, minFloor=6,  flavorText="아름다운 것은 언제나 취약하다."  },
 
             // 고레벨 장비
-            new EquipmentItemDef { id="eq_sword_dragon",  displayName="용살자의 검",    description="용을 쓰러뜨린 전설의 검. 공격 +35, 방어 +5",       icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Sword.png"), attackMod=35, defenseMod=5,  minFloor=10, flavorText="용은 죽었지만 그 혼은 검에 남았다."  },
-            new EquipmentItemDef { id="eq_armor_divine",  displayName="신성한 갑옷",    description="신의 가호. 방어 +35, 최대HP +60",                   icon=Spr(PIX+"Castle.png"),   defenseMod=35, maxHpMod=60,   minFloor=10, flavorText="신의 가호 아래 아무것도 두렵지 않다."  },
-            new EquipmentItemDef { id="eq_crown_divine",  displayName="신의 왕관",      description="최고의 힘. 공격+30, 방어+20, 최대HP+50",           icon=Spr(PIX+"Crown.png"),    attackMod=30, defenseMod=20, maxHpMod=50, minFloor=12, flavorText="신의 의지가 왕관에 깃들었다."  },
-            new EquipmentItemDef { id="eq_soul_fragment", displayName="영혼 결정체",    description="영혼의 힘을 담았다. 공격+20, 회복+20",             icon=Spr(GOTH+"SoulFragment.png"), attackMod=20, healMod=20, minFloor=8,  flavorText="영혼의 파편이지만 그 힘은 완전하다."  },
-            new EquipmentItemDef { id="eq_pickaxe_rune",  displayName="룬 곡괭이",      description="룬이 새겨진 도구. 공격 +10, 방어 +10, 최대HP +20", icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Pickaxe.png"), attackMod=10, defenseMod=10, maxHpMod=20, minFloor=5, flavorText="룬은 시간을 초월한 지식이다."  },
-            new EquipmentItemDef { id="eq_club_ancient",  displayName="고대 철퇴",      description="고대의 망치. 공격 +18, 방어 +3",                   icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Club.png"),   attackMod=18, defenseMod=3, minFloor=4,  flavorText="고대의 지혜가 이 무기에 담겨있다."  },
+            new EquipmentItemDef { id="eq_sword_dragon",  displayName="용살자의 검",    description="용을 쓰러뜨린 전설의 검. 공격 +18, 방어 +3",       icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Sword.png"), attackMod=18, defenseMod=3,  minFloor=10, flavorText="용은 죽었지만 그 혼은 검에 남았다."  },
+            new EquipmentItemDef { id="eq_armor_divine",  displayName="신성한 갑옷",    description="신의 가호. 방어 +18, 최대HP +60",                   icon=Spr(PIX+"Castle.png"),   defenseMod=18, maxHpMod=60,   minFloor=10, flavorText="신의 가호 아래 아무것도 두렵지 않다."  },
+            new EquipmentItemDef { id="eq_crown_divine",  displayName="신의 왕관",      description="최고의 힘. 공격+15, 방어+10, 최대HP+50",           icon=Spr(PIX+"Crown.png"),    attackMod=15, defenseMod=10, maxHpMod=50, minFloor=12, flavorText="신의 의지가 왕관에 깃들었다."  },
+            new EquipmentItemDef { id="eq_soul_fragment", displayName="영혼 결정체",    description="영혼의 힘을 담았다. 공격+10, 회복+20",             icon=Spr(GOTH+"SoulFragment.png"), attackMod=10, healMod=20, minFloor=8,  flavorText="영혼의 파편이지만 그 힘은 완전하다."  },
+            new EquipmentItemDef { id="eq_pickaxe_rune",  displayName="룬 곡괭이",      description="룬이 새겨진 도구. 공격 +5, 방어 +5, 최대HP +20",   icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Pickaxe.png"), attackMod=5, defenseMod=5, maxHpMod=20, minFloor=5, flavorText="룬은 시간을 초월한 지식이다."  },
+            new EquipmentItemDef { id="eq_club_ancient",  displayName="고대 철퇴",      description="고대의 망치. 공격 +9, 방어 +2",                    icon=Spr("Assets/Brackeys/2D Mega Pack/Weapons & Tools/Club.png"),   attackMod=9,  defenseMod=2, minFloor=4,  flavorText="고대의 지혜가 이 무기에 담겨있다."  },
         };
 
         db.consumables.AddRange(consumables);

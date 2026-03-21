@@ -18,7 +18,33 @@ public class GameOptionsSceneManager : MonoBehaviour
         return sys ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
     }
 
+    // ── ESC 팝업 ───────────────────────────────────────────────────
+    private bool       _isQuitPopupOpen  = false;
+    private GameObject _quitPopupOverlay = null;
+
     void Start() => SetupUI();
+
+    void Update()
+    {
+        if (!Input.GetKeyDown(KeyCode.Escape)) return;
+        if (_isQuitPopupOpen)
+        {
+            if (_quitPopupOverlay != null) { Destroy(_quitPopupOverlay); _quitPopupOverlay = null; }
+            _isQuitPopupOpen = false;
+        }
+        else
+        {
+            _isQuitPopupOpen = true;
+            var canvas = FindAnyObjectByType<Canvas>();
+            if (canvas != null)
+            {
+                _quitPopupOverlay = EscPopupHelper.ShowPopup(canvas, GetFont(),
+                    "데스크톱으로 돌아가시겠습니까?",
+                    onYes: () => { _isQuitPopupOpen = false; _quitPopupOverlay = null; Application.Quit(); },
+                    onNo:  () => { _isQuitPopupOpen = false; _quitPopupOverlay = null; });
+            }
+        }
+    }
 
     // =====================================================================
     private void SetupUI()
@@ -285,8 +311,9 @@ public class GameOptionsSceneManager : MonoBehaviour
         // PendingEngravingRolled 가 true 일 때만 표시 (실패해도 팝업을 보여줘야 함)
         if (gm == null || !gm.PendingEngravingRolled) return;
 
-        string newName = gm.PendingNewEngravingName;
-        bool success   = !string.IsNullOrEmpty(newName);
+        string newName  = gm.PendingNewEngravingName;
+        bool   success  = !string.IsNullOrEmpty(newName);
+        float  karma    = gm.PendingKarmaAtDeath;
 
         // 플래그 초기화 (한 번만 표시)
         gm.PendingEngravingRolled   = false;
@@ -336,7 +363,7 @@ public class GameOptionsSceneManager : MonoBehaviour
         p1TxtRt.anchorMin = Vector2.zero; p1TxtRt.anchorMax = Vector2.one;
         p1TxtRt.offsetMin = new Vector2(20f, 20f); p1TxtRt.offsetMax = new Vector2(-20f, -20f);
         var p1Txt = p1TxtGo.AddComponent<Text>();
-        p1Txt.text      = "당신의 업보가\n정산되고있다...";
+        p1Txt.text      = $"당신의 업보가\n정산되고있다...\n\n<size=22><color=#CC99FF>카르마 {karma:F1}%</color></size>";
         p1Txt.font      = GetFont(true);
         p1Txt.fontSize  = 38;
         p1Txt.color     = new Color(0.85f, 0.75f, 1f);
@@ -362,11 +389,11 @@ public class GameOptionsSceneManager : MonoBehaviour
 
         if (success)
         {
-            rTxt.text = $"<color=#FFD700>★</color>  각인이 새겨졌다!\n\n<size=32><color=#E8C0FF>{newName}</color></size>";
+            rTxt.text = $"<color=#FFD700>★</color>  각인이 새겨졌다!\n\n<size=32><color=#E8C0FF>{newName}</color></size>\n\n<size=20><color=#CC99FF>카르마 {karma:F1}%  →  성공 확률 {karma:F1}%</color></size>";
         }
         else
         {
-            rTxt.text = "<color=#888888>아무 일도 없었다...</color>";
+            rTxt.text = $"<color=#888888>아무 일도 없었다...</color>\n\n<size=20><color=#CC99FF>카르마 {karma:F1}%  →  성공 확률 {karma:F1}%</color></size>";
         }
         rTxt.font        = GetFont(true);
         rTxt.fontSize    = 28;

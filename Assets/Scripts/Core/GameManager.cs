@@ -37,6 +37,8 @@ public class GameManager : MonoBehaviour
     public string PendingNewEngravingName { get; set; }
     /// <summary>사망 시 각인 롤이 제실행되었는지 (true이면 보여주기 포하세되어도 팝업 표시).</summary>
     public bool PendingEngravingRolled { get; set; }
+    /// <summary>사망 시점의 카르마 수치 (씬 전환 후에도 유지).</summary>
+    public float PendingKarmaAtDeath { get; set; }
 
     // ── 던전 설정 에셋 (Inspector에서 DungeonFloorConfig을 연결) ──────────────
     [Header("던전 설정 에셋")]
@@ -84,6 +86,7 @@ public class GameManager : MonoBehaviour
         IsGameActive = true;
         PendingEngravingRolled = false;
         PendingNewEngravingName = null;
+        PendingKarmaAtDeath = 0f;
         History.RecordFloor(1);
         SceneManager.LoadScene(SCENE_GAME);
     }
@@ -102,7 +105,8 @@ public class GameManager : MonoBehaviour
         History.RecordDeath();
 
         // 카르마 수치 기반 각인 해금 시도 (중복 방지 포함)
-        PendingEngravingRolled = true;   // 실패해도 팝업을 표시하낵 표시
+        PendingKarmaAtDeath = Player.Karma;  // 사망 시점 카르마 보존
+        PendingEngravingRolled = true;   // 실패해도 팝업을 표시
         var newEng = Engraving.TryUnlockOnDeath(Player.Karma);
         if (newEng != null)
             PendingNewEngravingName = newEng.engravingName;
